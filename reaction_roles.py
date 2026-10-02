@@ -7,7 +7,7 @@ from pathlib import Path
 
 import discord
 
-from bot import ROOT, database_path, load_questions, main as daily_scheduler
+from bot import ROOT, database_path, load_questions, study_instructions, archive_duration, main as daily_scheduler
 
 log = logging.getLogger("nclexapro")
 EMOJI = "💊"
@@ -30,18 +30,19 @@ def prepare_questions():
 
 
 def announcement_content():
+    minutes = archive_duration(int(os.getenv("TEST_REPLAY", "0")))
     return (
         "💊 **Meet NCLEXapro — your daily dose of NCLEX practice!**\n\n"
         "**Created by Siah.**\n\n"
-        f"Daily practice questions are posted in dated threads in <#{os.environ['DISCORD_CHANNEL_ID']}> "
-        "with hidden answers, rationales, and explanations for every choice.\n\n"
-        "**Question sources:** The current starter set contains original NCLEX-style questions. "
-        "UWorld questions supplied with permission may also be included for this private study group. "
+        f"Find the daily dated threads in <#{os.environ['DISCORD_CHANNEL_ID']}>.\n\n"
+        "**Reminders:** React 💊 here to subscribe; remove it to unsubscribe. "
+        "Subscribers get one daily role ping. Check your Discord notification settings if alerts are muted.\n\n"
+        + study_instructions(minutes) + "\n\n"
+        "**Sources:** The starter questions are original NCLEX-style practice. "
+        "UWorld questions supplied with permission may also be included. "
         "NCLEXapro is not affiliated with UWorld.\n\n"
         "🔒 **Please do not copy, screenshot, forward, or share these questions anywhere outside "
         "this private Discord server.**\n\n"
-        "React with 💊 below to subscribe to **NCLEXapro Alerts**. "
-        "Remove your reaction to unsubscribe. Only subscribers are tagged once per daily batch.\n\n"
         "The default posting time is 9 AM Pacific; your server administrator can confirm "
         "the configured schedule. Personal Discord notification settings still apply."
     )
@@ -141,6 +142,11 @@ class NCLEXapro(discord.Client):
 
     async def on_raw_reaction_remove(self, payload):
         await self.apply_reaction(payload, False)
+
+    async def on_thread_update(self, before, after):
+        if after.parent_id == int(os.environ["DISCORD_CHANNEL_ID"]) and not before.archived and after.archived:
+            log.info("Thread archived: %s (ID %s). Questions remain available in Threads → Archived/Closed.",
+                     after.name, after.id)
 
 
 if __name__ == "__main__":

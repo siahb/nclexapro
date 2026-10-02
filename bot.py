@@ -22,8 +22,8 @@ def database_path():
 def scheduler_database_path(channel, replay):
     base = database_path()
     test_channel = os.getenv("TEST_CHANNEL_ID", "1555389202533716009")
-    if replay not in (0, 1, 2):
-        raise ValueError("TEST_REPLAY must be 0, 1, or 2.")
+    if not 0 <= replay <= 10:
+        raise ValueError("TEST_REPLAY must be 0 (normal posting) or a test number from 1 to 10.")
     if replay:
         if channel != test_channel:
             raise ValueError("TEST_REPLAY is only allowed in TEST_CHANNEL_ID; set it to 0 for launch.")
@@ -107,11 +107,41 @@ def send(token, channel, content, nonce, role_id=None, embeds=None, reply_to=Non
 
 def question_embed(q, number):
     return {
-        "title": f"💊 Question {number} · {q.get('topic', 'NCLEX practice')}"[:256],
+        "title": f"Question {number:02d} / 10 · {q.get('topic', 'NCLEX practice')}"[:256],
+        "author": {"name": "💊 NCLEXapro • Created by Siah"},
         "description": q["question"] + "\n\n" + "\n".join(q["choices"]),
         "color": 0x14B8A6,
         "footer": {"text": "React ✅ when done • Reveal the spoiler reply to review"},
     }
+
+
+def archive_duration(replay):
+    if not replay:
+        return 1440
+    minutes = int(os.getenv("TEST_ARCHIVE_MINUTES", "1440"))
+    if minutes not in (60, 1440):
+        raise ValueError("TEST_ARCHIVE_MINUTES must be 60 (1 hour) or 1440 (24 hours).")
+    return minutes
+
+
+def study_instructions(minutes=1440):
+    hours = minutes // 60
+    return (
+        "**How to study**\n"
+        "1. Click or tap the dated thread attached to the daily post.\n"
+        "2. Read a question and choose your answer before revealing anything. "
+        "For select-all-that-apply, choose every correct option.\n"
+        "3. Click or tap the hidden spoiler reply to reveal the **Answer** and **Rationale**.\n"
+        "4. Click the existing ✅ on the question when finished; click again to undo. "
+        "This is a completion marker, not a score or submitted answer.\n"
+        "5. Discuss answers inside the thread to keep the main channel tidy.\n\n"
+        "**Find older questions**\n"
+        f"Threads automatically archive after {hours} hour{'s' if hours != 1 else ''} of inactivity; "
+        "questions and reactions are kept. New messages reset the timer.\n"
+        "Open this channel → **Threads** (the thread icon or channel menu) → "
+        "**Archived** or **Closed**, then select the date. You can also use Discord search "
+        "to find a question. Some versions label archived threads as closed."
+    )
 
 
 def explanation(q):
@@ -131,6 +161,7 @@ def initialize_history(db):
 
 
 def daily_thread(db, token, channel, now, replay=0):
+    minutes = archive_duration(replay)
     day = now.date().isoformat()
     if replay:
         # Reuse this replay's original thread even after a date change or restart.
@@ -148,9 +179,10 @@ def daily_thread(db, token, channel, now, replay=0):
         mention = f"<@&{role_id}> " if role_id else ""
         parent_id = send(token, channel,
             f"{mention}💊 **NCLEXapro • {label}**\n"
-            "Today's practice questions are in the thread attached to this post. "
-            "React ✅ to each question when you're done; reveal the hidden answers to review.",
-            nonce_for(f"{channel}:{day}:thread-parent:replay-{replay}"), role_id=role_id)
+            "Open the attached thread for today's 10-question practice set.",
+            nonce_for(f"{channel}:{day}:thread-parent:replay-{replay}"), role_id=role_id,
+            embeds=[{"title": "Your daily dose of practice", "description": study_instructions(minutes),
+                     "color": 0x14B8A6, "footer": {"text": "Created by Siah • Keep questions in this private server"}}])
         db.execute("INSERT INTO daily_threads VALUES (?, ?, ?, NULL)",
                    (day, channel, parent_id))
         db.commit()
@@ -163,7 +195,7 @@ def daily_thread(db, token, channel, now, replay=0):
         thread = message.get("thread")
         if thread is None:
             thread = discord_request(token, f"channels/{channel}/messages/{parent_id}/threads",
-                {"name": f"NCLEXapro • {label}", "auto_archive_duration": 1440})
+                {"name": f"NCLEXapro • {label}", "auto_archive_duration": minutes})
         thread_id = str(thread["id"])
         db.execute("UPDATE daily_threads SET thread_id = ? WHERE day = ? AND channel_id = ?",
                    (thread_id, day, channel))

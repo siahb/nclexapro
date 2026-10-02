@@ -4,12 +4,19 @@ Daily NCLEX practice for the Los Medanos College RN program.
 
 ## Daily threads
 
-### Two test replays
+### Ten test runs
 
 For the configured test channel `1555389202533716009`, set `TEST_REPLAY=1` and redeploy
 to immediately replay the first ten questions in a dated `Test 1` thread. Set it to `2`
-and redeploy for `Test 2`. Each replay is recorded on the persistent volume and will not
+and redeploy for `Test 2`, then continue up to `10`. Each replay is recorded on the persistent volume and will not
 repeat after a restart, even on a later date. Partial deliveries resume in the same thread.
+Set `TEST_ARCHIVE_MINUTES=60` for a one-hour automatic archive test, or `1440` for a
+24-hour inactivity test. This setting applies only to newly created test threads; production
+threads always use 24 hours. Leave the test thread without new messages for that period.
+The bot logs thread archive events when connected; Discord performs the automatic archiving.
+In Discord, verify Threads → Archived/Closed preserves questions, spoilers, and checkmarks.
+Manual closing tests the archived view but does not verify the automatic timer.
+
 Test replays do not mention the alerts role. Deleting test messages does not reset a replay.
 
 At launch, set `TEST_REPLAY=0` and change `DISCORD_CHANNEL_ID` to the real question channel.
