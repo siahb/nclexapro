@@ -57,13 +57,15 @@ def load_questions(path):
     return questions
 
 
-def render(q):
+def render(q, number=1):
     choices = "\n".join(q["choices"])
     # Spoilers let students attempt the question before revealing the explanation.
     answer = q["answer"].replace("||", "")
     rationale = q["rationale"].replace("||", "")
-    return (f"**NCLEXapro · NCLEX practice**\n{q['question']}\n\n{choices}\n\n"
-            f"**Answer:** ||{answer}||\n**Rationale:** ||{rationale}||")
+    return (f"💊 **Question {number:02d} / 10 · {q.get('topic', 'NCLEX practice')}**\n\n"
+            f"{q['question']}\n\n{choices}\n\n"
+            f"**Answer:** ||{answer}||\n\n**Rationale:**\n||{rationale}||\n\n"
+            "-# ✅ Done · ❓ Unsure · ❌ Missed — choose one below; tap again to undo.")
 
 
 def discord_request(token, path, payload=None, method=None):
@@ -105,16 +107,6 @@ def send(token, channel, content, nonce, role_id=None, embeds=None, reply_to=Non
     return discord_request(token, f"channels/{channel}/messages", payload)["id"]
 
 
-def question_embed(q, number):
-    return {
-        "title": f"Question {number:02d} / 10 · {q.get('topic', 'NCLEX practice')}"[:256],
-        "author": {"name": "💊 NCLEXapro • Created by Siah"},
-        "description": q["question"] + "\n\n" + "\n".join(q["choices"]),
-        "color": 0x14B8A6,
-        "footer": {"text": "React ✅ when done • Reveal the spoiler reply to review"},
-    }
-
-
 def archive_duration(replay):
     if not replay:
         return 1440
@@ -131,9 +123,10 @@ def study_instructions(minutes=1440):
         "1. Click or tap the dated thread attached to the daily post.\n"
         "2. Read a question and choose your answer before revealing anything. "
         "For select-all-that-apply, choose every correct option.\n"
-        "3. Click or tap the hidden spoiler reply to reveal the **Answer** and **Rationale**.\n"
-        "4. Click the existing ✅ on the question when finished; click again to undo. "
-        "This is a completion marker, not a score or submitted answer.\n"
+        "3. Reveal the hidden **Answer** and **Rationale** in the same question message.\n"
+        "4. After reviewing, choose a reaction on that message: ✅ Done, ❓ Unsure, or ❌ Missed. "
+        "Click again to undo or remove your old reaction before choosing another. "
+        "These are self-check markers, not graded or submitted answers.\n"
         "5. Discuss answers inside the thread to keep the main channel tidy.\n\n"
         "**Find older questions**\n"
         f"Threads automatically archive after {hours} hour{'s' if hours != 1 else ''} of inactivity; "
@@ -157,6 +150,9 @@ def initialize_history(db):
                "parent_id TEXT, thread_id TEXT, PRIMARY KEY(day, channel_id))")
     db.execute("CREATE TABLE IF NOT EXISTS question_deliveries (question_id TEXT PRIMARY KEY, "
                "day TEXT, thread_id TEXT, message_id TEXT)")
+    columns = {row[1] for row in db.execute("PRAGMA table_info(question_deliveries)")}
+    if "format" not in columns:
+        db.execute("ALTER TABLE question_deliveries ADD COLUMN format TEXT DEFAULT 'legacy'")
     db.commit()
 
 
@@ -216,22 +212,25 @@ def post_daily_batch(db, token, channel, questions, now, replay=0):
     thread_id = daily_thread(db, token, channel, now, replay=replay)
     count = 0
     for q in candidates:
-        delivery = db.execute("SELECT day, thread_id, message_id FROM question_deliveries "
+        delivery = db.execute("SELECT day, thread_id, message_id, format FROM question_deliveries "
                               "WHERE question_id = ?", (q["id"],)).fetchone()
         if delivery is None:
-            message_id = send(token, thread_id, "", nonce_for(f"{channel}:{day}:{q['id']}:embed:replay-{replay}"),
-                              embeds=[question_embed(q, (len(used) if replay else len(posted)) + count + 1)])
-            db.execute("INSERT INTO question_deliveries VALUES (?, ?, ?, ?)",
-                       (q["id"], day, thread_id, message_id))
+            number = (len(used) if replay else len(posted)) + count + 1
+            message_id = send(token, thread_id, render(q, number),
+                              nonce_for(f"{channel}:{day}:{q['id']}:combined:replay-{replay}"))
+            db.execute("INSERT INTO question_deliveries (question_id, day, thread_id, message_id, format) "
+                       "VALUES (?, ?, ?, ?, 'combined')", (q["id"], day, thread_id, message_id))
             db.commit()
-            delivery = (day, thread_id, message_id)
-        delivery_day, delivery_thread, message_id = delivery
+            delivery = (day, thread_id, message_id, "combined")
+        delivery_day, delivery_thread, message_id, message_format = delivery
         # Discord's PUT is idempotent: retries keep one bot reaction on the question.
-        discord_request(token,
-            f"channels/{delivery_thread}/messages/{message_id}/reactions/%E2%9C%85/@me",
-            method="PUT")
-        send(token, delivery_thread, explanation(q),
-             nonce_for(f"{channel}:{delivery_day}:{q['id']}:explanation:replay-{replay}"), reply_to=message_id)
+        for emoji in ("%E2%9C%85", "%E2%9D%93", "%E2%9D%8C"):
+            discord_request(token,
+                f"channels/{delivery_thread}/messages/{message_id}/reactions/{emoji}/@me", method="PUT")
+        if message_format == "legacy":
+            # Finish an interrupted delivery created by the older two-message format.
+            send(token, delivery_thread, explanation(q),
+                 nonce_for(f"{channel}:{delivery_day}:{q['id']}:explanation:replay-{replay}"), reply_to=message_id)
         db.execute("INSERT INTO posts VALUES (?, ?, ?)", (delivery_day, q["id"], message_id))
         db.commit()
         count += 1

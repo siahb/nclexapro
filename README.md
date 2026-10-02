@@ -14,7 +14,7 @@ Set `TEST_ARCHIVE_MINUTES=60` for a one-hour automatic archive test, or `1440` f
 24-hour inactivity test. This setting applies only to newly created test threads; production
 threads always use 24 hours. Leave the test thread without new messages for that period.
 The bot logs thread archive events when connected; Discord performs the automatic archiving.
-In Discord, verify Threads → Archived/Closed preserves questions, spoilers, and checkmarks.
+In Discord, verify Threads → Archived/Closed preserves questions, spoilers, and self-check reactions.
 Manual closing tests the archived view but does not verify the automatic timer.
 
 Test replays do not mention the alerts role. Deleting test messages does not reset a replay.
@@ -28,9 +28,11 @@ Never delete the persistent volume to reset a test.
 The question channel receives one daily parent post, with the opt-in alerts role mentioned
 once. Questions are posted inside its thread, named `NCLEXapro • October 1, 2026` using
 the configured `BOT_TIMEZONE` (Pacific by default). Each question supports manual ✅ reactions.
-Questions use teal embeds with the prompt and choices. Each has a spoiler reply for the
-answer and reasoning for every option. The bot adds a ✅ reaction to each question so
-members can click it directly. Reply notifications are disabled. Threads
+Each question is one formatted message containing the prompt, choices, hidden answer,
+and hidden rationale. The bot adds ✅ Done, ❓ Unsure, and ❌ Missed reactions to that
+same message so members can choose a self-check marker. These are not automatic grades.
+Members should remove an old marker before selecting another; multiple markers are not
+automatically cleared. Threads
 auto-archive after 24 hours of inactivity; content is not deleted.
 
 In the question channel, grant the bot **View Channel**, **Send Messages**,
@@ -46,7 +48,7 @@ unused questions produces no thread or ping. Keep the persistent volume attached
 The subscription announcement and daily thread posts can share one channel. Set
 `ANNOUNCEMENT_CHANNEL_ID` and `DISCORD_CHANNEL_ID` to the same channel ID. Pin the
 subscription announcement manually so it remains easy to find. Use the first announcement's
-💊 reaction to subscribe and each question's ✅ reaction to mark personal completion.
+💊 reaction to subscribe and each question's ✅ / ❓ / ❌ reactions to mark personal progress.
 
 ![NCLEXapro icon](assets/icon.png)
 
