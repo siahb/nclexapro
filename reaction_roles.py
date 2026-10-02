@@ -1,5 +1,8 @@
 """Gateway client for opt-in alerts; also starts the daily question scheduler."""
 import asyncio
+import hashlib
+import json
+import re
 import logging
 import os
 import sqlite3
@@ -9,7 +12,7 @@ from zoneinfo import ZoneInfo
 
 import discord
 
-from bot import ROOT, database_path, load_questions, study_instructions, archive_duration, launch_info, main as daily_scheduler
+from bot import ROOT, database_path, load_questions, study_instructions, archive_duration, launch_info, nonce_for, discord_request, main as daily_scheduler
 
 log = logging.getLogger("nclexapro")
 EMOJI = "💊"
@@ -84,6 +87,97 @@ def announcement_content():
     )
 
 
+QUIZ_TEST_CHANNEL = 1555717804936667196
+
+
+def quiz_database():
+    return database_path().with_name("quiz-tests.sqlite3")
+
+
+def initialize_quiz_db(db):
+    db.execute("CREATE TABLE IF NOT EXISTS quiz_runs (channel_id TEXT, run INTEGER, "
+               "parent_id TEXT, thread_id TEXT, PRIMARY KEY(channel_id, run))")
+    db.execute("CREATE TABLE IF NOT EXISTS quiz_messages (channel_id TEXT, run INTEGER, "
+               "question_key TEXT, question_json TEXT, message_id TEXT, "
+               "PRIMARY KEY(channel_id, run, question_key))")
+    db.commit()
+
+
+def answer_letters(question):
+    # Imported answers may be 'B. ...'; generated answers use 'B' or 'A, C, E'.
+    answer = question["answer"].strip()
+    if re.match(r"^[A-Z]\.", answer):
+        letters = {answer[0]}
+    else:
+        letters = set(re.split(r"[\s,]+", answer))
+    valid = {choice.split(".", 1)[0] for choice in question["choices"]}
+    if not letters or not letters <= valid:
+        raise ValueError(f"Invalid correct answer for {question['id']}")
+    return letters
+
+
+def quiz_prompt(question, number=None):
+    heading = f"Question {number:02d} / 10" if number is not None else "Your private practice"
+    return (f"💊 **{heading} · {question.get('topic', 'NCLEX practice')}**\n\n"
+            + question["question"] + "\n\n" + "\n".join(question["choices"]) +
+            "\n\nChoose your answer privately below. Nothing is submitted to the class.")
+
+
+def private_feedback(question, selected):
+    correct = answer_letters(question)
+    result = "✅ Correct!" if set(selected) == correct else "📖 Let's review."
+    return (f"**{result}**\nYour answer: {', '.join(sorted(selected))}\n"
+            f"**Answer:** {', '.join(sorted(correct))}\n\n"
+            f"**Rationale:**\n{question['rationale']}\n\n"
+            "Only you can see this feedback. Individual answers are not saved.")
+
+
+class PrivateAnswerView(discord.ui.View):
+    def __init__(self, question, user_id):
+        super().__init__(timeout=600)
+        self.question = question
+        self.user_id = user_id
+        self.selected = []
+        self.submitted = False
+        multiple = len(answer_letters(question)) > 1
+        options = [discord.SelectOption(label=choice[:100], value=choice.split('.', 1)[0])
+                   for choice in question["choices"]]
+        select = discord.ui.Select(placeholder="Select all that apply" if multiple else "Choose one answer",
+                                   options=options, min_values=1,
+                                   max_values=len(options) if multiple else 1)
+        async def choose(interaction):
+            self.selected = list(select.values)
+            await interaction.response.defer()
+        select.callback = choose
+        self.add_item(select)
+        submit = discord.ui.Button(label="Submit answer", style=discord.ButtonStyle.success)
+        submit.callback = self.submit
+        self.add_item(submit)
+
+    async def interaction_check(self, interaction):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("Open your own private answer panel.", ephemeral=True)
+            return False
+        return True
+
+    async def submit(self, interaction):
+        if self.submitted:
+            await interaction.response.send_message("Already submitted. Open the question again to retry.", ephemeral=True)
+            return
+        if not self.selected:
+            await interaction.response.send_message("Choose an answer from the menu first.", ephemeral=True)
+            return
+        self.submitted = True
+        feedback = private_feedback(self.question, self.selected)
+        # Existing validated questions fit the feedback limit; split defensively for imports.
+        chunks = [feedback[i:i + 1900] for i in range(0, len(feedback), 1900)]
+        await interaction.response.edit_message(content=chunks[0], view=None, allowed_mentions=discord.AllowedMentions.none())
+        for chunk in chunks[1:]:
+            await interaction.followup.send(chunk, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+        self.stop()
+
+
+
 class NCLEXapro(discord.Client):
     def __init__(self):
         intents = discord.Intents.none()
@@ -94,9 +188,118 @@ class NCLEXapro(discord.Client):
         self.channel_id = int(os.environ["ANNOUNCEMENT_CHANNEL_ID"])
         self.message_id = None
         self.worker = None
+        self.quiz_worker = None
 
     async def setup_hook(self):
         self.worker = asyncio.create_task(self.start_services())
+        self.quiz_worker = asyncio.create_task(self.start_quiz_tests())
+
+    async def start_quiz_tests(self):
+        await self.wait_until_ready()
+        try:
+            run = int(os.getenv("QUIZ_TEST_RUN", "0"))
+            if not 0 <= run <= 10:
+                raise ValueError("QUIZ_TEST_RUN must be 0 (off) or 1 through 10.")
+            if not run:
+                return
+            channel_id = int(os.getenv("QUIZ_TEST_CHANNEL_ID", str(QUIZ_TEST_CHANNEL)).strip())
+            if channel_id != QUIZ_TEST_CHANNEL or channel_id == int(os.environ["DISCORD_CHANNEL_ID"]):
+                raise ValueError("Interactive tests must use the separate #test-bot channel 1555717804936667196.")
+            channel = await self.fetch_channel(channel_id)
+            if not isinstance(channel, discord.TextChannel):
+                raise ValueError("Quiz test channel must be a server text channel.")
+            questions = await asyncio.to_thread(load_questions,
+                os.getenv("QUESTIONS_FILE", str(ROOT / "questions.json")))
+            questions = questions[:10]
+            for number, q in enumerate(questions, 1):
+                answer_letters(q)
+                if len(quiz_prompt(q, number)) > 2000 or len(q["choices"]) > 25:
+                    raise ValueError("Question exceeds interactive display limits.")
+            with sqlite3.connect(quiz_database()) as db:
+                initialize_quiz_db(db)
+                row = db.execute("SELECT parent_id, thread_id FROM quiz_runs WHERE channel_id = ? AND run = ?",
+                                 (str(channel_id), run)).fetchone()
+                if row is None:
+                    payload = {
+                        "content": f"🧪 **NCLEXapro private quiz • Test {run}**\n"
+                                   "Open the attached thread for 10 practice questions. Tap **Answer privately**, "
+                                   "choose your answer(s), then **Submit answer**. Only you see your choices and feedback. "
+                                   "No individual scores are stored. You can reopen a question to retry. "
+                                   "If a private panel expires after 10 minutes or a bot restart, reopen it. "
+                                   "This is a test; there is no subscriber ping. Threads archive after 24 hours of inactivity.",
+                        "allowed_mentions": {"parse": []},
+                        "nonce": str(nonce_for(f"quiz-test:{channel_id}:{run}:parent")), "enforce_nonce": True}
+                    parent = await asyncio.to_thread(discord_request, os.environ["DISCORD_BOT_TOKEN"],
+                                                     f"channels/{channel_id}/messages", payload)
+                    db.execute("INSERT INTO quiz_runs VALUES (?, ?, ?, NULL)",
+                               (str(channel_id), run, str(parent["id"])))
+                    db.commit()
+                    row = (str(parent["id"]), None)
+                parent_id, thread_id = row
+                if thread_id is None:
+                    parent = await channel.fetch_message(int(parent_id))
+                    thread = parent.thread
+                    if thread is None:
+                        now = datetime.now(ZoneInfo("America/Los_Angeles"))
+                        thread = await parent.create_thread(
+                            name=f"NCLEXapro • {now:%B %d, %Y} • Private Test {run}", auto_archive_duration=1440)
+                    thread_id = str(thread.id)
+                    db.execute("UPDATE quiz_runs SET thread_id = ? WHERE channel_id = ? AND run = ?",
+                               (thread_id, str(channel_id), run))
+                    db.commit()
+                for number, q in enumerate(questions, 1):
+                    key = hashlib.sha256(q["id"].encode()).hexdigest()[:16]
+                    record = db.execute("SELECT message_id, question_json FROM quiz_messages "
+                                        "WHERE channel_id = ? AND run = ? AND question_key = ?",
+                                        (str(channel_id), run, key)).fetchone()
+                    if record and record[0]:
+                        continue
+                    if record:
+                        q = json.loads(record[1])
+                    else:
+                        db.execute("INSERT INTO quiz_messages VALUES (?, ?, ?, ?, NULL)",
+                                   (str(channel_id), run, key, json.dumps(q)))
+                        db.commit()
+                    payload = {
+                        "content": quiz_prompt(q, number), "allowed_mentions": {"parse": []},
+                        "nonce": str(nonce_for(f"quiz-test:{channel_id}:{run}:{key}")), "enforce_nonce": True,
+                        "components": [{"type": 1, "components": [{"type": 2, "style": 1,
+                            "label": "Answer privately", "custom_id": f"quiz:v1:{channel_id}:{run}:{key}"}]}]}
+                    message = await asyncio.to_thread(discord_request, os.environ["DISCORD_BOT_TOKEN"],
+                                                      f"channels/{thread_id}/messages", payload)
+                    db.execute("UPDATE quiz_messages SET message_id = ? "
+                               "WHERE channel_id = ? AND run = ? AND question_key = ?",
+                               (str(message["id"]), str(channel_id), run, key))
+                    db.commit()
+            log.info("Private quiz test %s ready in #test-bot. Production schedule unchanged.", run)
+        except Exception:
+            log.exception("Private quiz test failed; production scheduler continues. Check test-channel permissions.")
+
+    async def on_interaction(self, interaction):
+        custom_id = (interaction.data or {}).get("custom_id", "")
+        if not custom_id.startswith("quiz:v1:"):
+            return
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        try:
+            _, _, channel_id, run, key = custom_id.split(":")
+            if int(channel_id) != QUIZ_TEST_CHANNEL:
+                raise ValueError("Unknown quiz channel.")
+            with sqlite3.connect(quiz_database()) as db:
+                initialize_quiz_db(db)
+                row = db.execute("SELECT question_json, message_id FROM quiz_messages "
+                                 "WHERE channel_id = ? AND run = ? AND question_key = ?",
+                                 (channel_id, int(run), key)).fetchone()
+            if row is None or interaction.message is None or str(interaction.message.id) != row[1]:
+                raise ValueError("This test question is no longer available.")
+            question = json.loads(row[0])
+            await interaction.followup.send(quiz_prompt(question), ephemeral=True,
+                view=PrivateAnswerView(question, interaction.user.id),
+                allowed_mentions=discord.AllowedMentions.none())
+        except Exception:
+            log.exception("Could not open private quiz panel.")
+            await interaction.followup.send("This question could not be opened. Please ask Siah to check the bot.",
+                                            ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+
 
     async def start_services(self):
         await self.wait_until_ready()
@@ -190,3 +393,4 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     prepare_questions()
     NCLEXapro().run(os.environ["DISCORD_BOT_TOKEN"])
+
