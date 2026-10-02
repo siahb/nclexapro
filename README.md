@@ -22,17 +22,24 @@ The question channel receives one daily parent post, with the opt-in alerts role
 once. Questions are posted inside its thread, named `NCLEXapro • October 1, 2026` using
 the configured `BOT_TIMEZONE` (Pacific by default). Each question supports manual ✅ reactions.
 Questions use teal embeds with the prompt and choices. Each has a spoiler reply for the
-answer and reasoning for every option. Reply notifications are disabled. Threads
+answer and reasoning for every option. The bot adds a ✅ reaction to each question so
+members can click it directly. Reply notifications are disabled. Threads
 auto-archive after 24 hours of inactivity; content is not deleted.
 
 In the question channel, grant the bot **View Channel**, **Send Messages**,
-**Read Message History**, **Create Public Threads**, **Send Messages in Threads**, and **Embed Links**.
+**Read Message History**, **Create Public Threads**, **Send Messages in Threads**, **Embed Links**,
+and **Add Reactions**.
 Members need **View Channel**, **Read Message History**, **Send Messages in Threads**,
 and **Add Reactions** to discuss and mark questions complete.
 
 Existing posting history is preserved. Questions already posted as ordinary messages are
 not reposted or moved; dated threads begin with the next unused questions. A day with no
 unused questions produces no thread or ping. Keep the persistent volume attached.
+
+The subscription announcement and daily thread posts can share one channel. Set
+`ANNOUNCEMENT_CHANNEL_ID` and `DISCORD_CHANNEL_ID` to the same channel ID. Pin the
+subscription announcement manually so it remains easy to find. Use the first announcement's
+💊 reaction to subscribe and each question's ✅ reaction to mark personal completion.
 
 ![NCLEXapro icon](assets/icon.png)
 

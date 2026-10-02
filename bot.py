@@ -76,6 +76,8 @@ def discord_request(token, path, payload=None, method=None):
                                    "User-Agent": "NCLEXapro/1.0"})
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
+                if response.status == 204:
+                    return {}
                 return json.load(response)
         except urllib.error.HTTPError as error:
             if error.code != 429:
@@ -192,6 +194,10 @@ def post_daily_batch(db, token, channel, questions, now, replay=0):
             db.commit()
             delivery = (day, thread_id, message_id)
         delivery_day, delivery_thread, message_id = delivery
+        # Discord's PUT is idempotent: retries keep one bot reaction on the question.
+        discord_request(token,
+            f"channels/{delivery_thread}/messages/{message_id}/reactions/%E2%9C%85/@me",
+            method="PUT")
         send(token, delivery_thread, explanation(q),
              nonce_for(f"{channel}:{delivery_day}:{q['id']}:explanation:replay-{replay}"), reply_to=message_id)
         db.execute("INSERT INTO posts VALUES (?, ?, ?)", (delivery_day, q["id"], message_id))
