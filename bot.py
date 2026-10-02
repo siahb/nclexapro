@@ -117,7 +117,7 @@ def question_embed(q, number):
 def explanation(q):
     answer = q["answer"].replace("||", "")
     rationale = q["rationale"].replace("||", "")
-    return f"**Answer:** ||{answer}||\n**Why each option is right or wrong:**\n||{rationale}||"
+    return f"**Answer:** ||{answer}||\n**Rationale:**\n||{rationale}||"
 
 
 def initialize_history(db):
