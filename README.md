@@ -14,7 +14,7 @@ prompts are skipped; existing question IDs cannot be changed by the feed. The ge
 compares earlier questions to avoid paraphrased repeats. Imported private questions are preserved.
 Feed failures keep the current bank intact; an empty bank stops posts rather than repeating them.
 
-The existing 9 AM Pacific schedule then posts up to ten unused questions. Generation failures
+The LMC schedule posts up to ten unused questions at noon Pacific (October 2, 2026 uses a one-time 3:15 PM recovery post). Generation failures
 or delays can affect readiness; check the scheduled task and Railway logs before launch.
 Test replays remain isolated and do not refresh the live feed.
 
@@ -162,3 +162,44 @@ The following is a format illustration, not clinical study content:
 ```
 
 Each question and explanation must fit Discord's 2,000-character message limit. When the bank runs out, the bot stops posting new questions until you import more. Posting records survive restarts. Discord nonce deduplication protects brief retries, but a crash after Discord accepts a message and before the database commit can still cause a duplicate on a later restart.
+
+## Private quiz pilot in #test-bot
+
+The interactive pilot runs alongside the production scheduler, in the separate test channel
+`1555717804936667196`. Leave production `DISCORD_CHANNEL_ID`, `ANNOUNCEMENT_CHANNEL_ID`,
+and `TEST_REPLAY=0` unchanged. Set these Railway variables and deploy:
+
+```env
+QUIZ_TEST_CHANNEL_ID=1555717804936667196
+QUIZ_TEST_RUN=1
+```
+
+Each run from 1 through 10 creates a separate dated test thread with the first ten bank
+questions. No alerts role is mentioned, no questions are marked used in production, and
+normal daily posts continue. A completed run will not repeat on restart; change the run
+number to create another test. Set `QUIZ_TEST_RUN=0` to disable new test posting.
+Keep one replica and the persistent volume attached.
+
+Each public question has an **Answer privately** button, with no public answer or rationale.
+It opens an ephemeral panel. Choose one answer, or every applicable option for a
+select-all-that-apply item, then press **Submit answer**. Only the interacting student sees
+their selection, result, and option-by-option rationale. Individual answers, student IDs,
+and scores are not written to the quiz database. Discord still processes the interactions;
+this is privacy from classmates, not anonymity from Discord.
+
+The volume stores question snapshots and test thread/message IDs so public buttons work
+after restarts. Open private panels expire after ten minutes and do not survive a restart;
+click the public button again to open a new one. Retrying is allowed. Test threads archive
+after 24 hours of inactivity; find them under **Threads → Archived/Closed**. Reopen the thread
+in Discord if archived controls cannot be used. Deleting test messages does not reset a run.
+
+In #test-bot grant the bot **View Channel**, **Send Messages**, **Read Message History**,
+**Create Public Threads**, and **Send Messages in Threads**. Members need **View Channel**
+and **Read Message History**; allow **Send Messages in Threads** for discussion.
+No administrator or privileged intents are needed.
+
+Before migrating the production question format, verify on desktop and mobile:
+single-choice correct/incorrect results; SATA exact-match grading; two users answering
+the same question independently; no answers appearing in the public thread; restart and
+reopen; completed-run deduplication; and archived-thread access. The existing production
+question format and native weekly poll remain unchanged during this pilot.
