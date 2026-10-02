@@ -36,15 +36,15 @@ def announcement_content():
         "**Created by Siah.**\n\n"
         f"Find the daily dated threads in <#{os.environ['DISCORD_CHANNEL_ID']}>.\n\n"
         "**Reminders:** React 💊 here to subscribe; remove it to unsubscribe. "
-        "Subscribers get one daily role ping. Check your Discord notification settings if alerts are muted.\n\n"
-        + study_instructions(minutes) + "\n\n"
+        "Subscribers get one daily role ping. "
+        "Check your Discord notification settings if alerts are muted.\n\n"
         "**Sources:** The starter questions are original NCLEX-style practice. "
-        "UWorld questions supplied with permission may also be included. "
-        "NCLEXapro is not affiliated with UWorld.\n\n"
-        "🔒 **Please do not copy, screenshot, forward, or share these questions anywhere outside "
-        "this private Discord server.**\n\n"
-        "The default posting time is 9 AM Pacific; your server administrator can confirm "
-        "the configured schedule. Personal Discord notification settings still apply."
+        "UWorld QBank questions shared with permission may also be included.\n\n"
+        "🔒 **Please do not copy, screenshot, forward, or share these questions "
+        "anywhere outside this private Discord server.**\n\n"
+        "The default posting time is 9 AM Pacific; your server administrator "
+        "can confirm the configured schedule. "
+        "Personal Discord notification settings still apply."
     )
 
 
