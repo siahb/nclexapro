@@ -1,1 +1,195 @@
-[]
+[
+  {
+    "id": "original-daily-2026-10-02-01",
+    "topic": "Fundamentals: infection prevention",
+    "question": "A client admitted with a persistent cough, night sweats, and weight loss is being evaluated for pulmonary tuberculosis. An airborne infection isolation room is available. Which plan is appropriate while testing is pending?",
+    "choices": [
+      "A. Use that room and wear a fit-tested N95 or higher-level respirator for room entry.",
+      "B. Use a positive-pressure room and a surgical mask for room entry.",
+      "C. Place the client with another coughing client and use only standard precautions.",
+      "D. Wait for a positive laboratory result before starting airborne precautions."
+    ],
+    "answer": "A",
+    "rationale": "A: Suspected pulmonary tuberculosis requires airborne precautions now. An airborne infection isolation room and a fit-tested N95 or higher-level respirator reduce inhalation exposure.\n\nB: Positive pressure can push contaminated air into nearby areas; it is not the recommended isolation arrangement. A surgical mask does not replace the staff respirator.\n\nC: Shared placement and standard precautions alone do not adequately control suspected airborne tuberculosis.\n\nD: Waiting for confirmation exposes others. Precautions begin when pulmonary tuberculosis is suspected.",
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale checked against the linked authoritative sources. Not an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-02",
+    "source_urls": [
+      "https://www.cdc.gov/infection-control/hcp/basics/transmission-based-precautions.html",
+      "https://www.cdc.gov/infection-control/hcp/isolation-precautions/appendix-a-type-duration.html"
+    ]
+  },
+  {
+    "id": "original-daily-2026-10-02-02",
+    "topic": "Pharmacology: digoxin safety",
+    "question": "Before a scheduled digoxin dose, a client reports new nausea and blurred yellow vision. The nurse counts an apical pulse of 52/min. Which action is most appropriate?",
+    "choices": [
+      "A. Give the dose with food and reassess at the next medication time.",
+      "B. Withhold the dose, assess the client, and promptly notify the prescriber.",
+      "C. Give an additional dose because a slow pulse means the drug is ineffective.",
+      "D. Document expected effects without notifying the prescriber."
+    ],
+    "answer": "B",
+    "rationale": "A: Food does not resolve the concern raised by new gastrointestinal and visual symptoms with a slow pulse; giving another dose may worsen toxicity.\n\nB: This combination raises concern for digoxin toxicity or an adverse cardiac effect. Withhold the dose and obtain prompt clinical evaluation; urgent escalation depends on the assessment.\n\nC: An abnormally slow pulse is not evidence that more digoxin is needed. An extra dose could worsen the problem.\n\nD: New visual changes, nausea, and bradycardia warrant evaluation rather than being dismissed as expected effects.",
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale checked against the linked authoritative sources. Not an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-02",
+    "source_urls": [
+      "https://medlineplus.gov/druginfo/meds/a682301.html"
+    ]
+  },
+  {
+    "id": "original-daily-2026-10-02-03",
+    "topic": "Adult medical-surgical: stroke recognition",
+    "question": "At a community clinic, an adult suddenly develops one-sided facial drooping and difficulty speaking. The symptoms began 10 minutes ago. Which action should the nurse take?",
+    "choices": [
+      "A. Have a family member drive the client home to rest.",
+      "B. Wait 30 minutes to see whether the symptoms resolve.",
+      "C. Activate emergency medical services and communicate the symptom-onset time.",
+      "D. Schedule a routine appointment because the symptoms may represent a transient event."
+    ],
+    "answer": "C",
+    "rationale": "A: Returning home delays assessment and treatment of a possible stroke. Emergency transport provides access to urgent care.\n\nB: Stroke evaluation is time-sensitive. Waiting to see whether symptoms pass can delay treatment.\n\nC: New focal neurologic symptoms require immediate emergency evaluation. The onset time helps the receiving team determine treatment options.\n\nD: Even symptoms that resolve can indicate a transient ischemic attack and require urgent evaluation, not a routine visit.",
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale checked against the linked authoritative sources. Not an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-02",
+    "source_urls": [
+      "https://www.cdc.gov/stroke/signs-symptoms/index.html"
+    ]
+  },
+  {
+    "id": "original-daily-2026-10-02-04",
+    "topic": "Maternity: warning signs",
+    "question": "A client at 32 weeks of gestation with gestational hypertension calls the nurse. Which report requires urgent assessment for possible severe preeclampsia?",
+    "choices": [
+      "A. Mild ankle swelling after standing that improves with rest.",
+      "B. Brief nausea triggered by a strong food odor.",
+      "C. Urinary frequency without pain or fever.",
+      "D. A persistent headache accompanied by flashing lights in the vision."
+    ],
+    "answer": "D",
+    "rationale": "A: Mild dependent ankle swelling alone can occur in pregnancy. It is less concerning than persistent neurologic symptoms, although new or worsening symptoms still deserve assessment.\n\nB: Brief odor-associated nausea alone is less specific for severe preeclampsia than persistent headache with visual changes.\n\nC: Frequency without other concerning features is not the priority warning sign in this comparison.\n\nD: A persistent headache with visual disturbance is a warning pattern for severe preeclampsia. Prompt assessment is needed; do not defer this report to a routine visit.",
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale checked against the linked authoritative sources. Not an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-02",
+    "source_urls": [
+      "https://medlineplus.gov/ency/article/000898.htm"
+    ]
+  },
+  {
+    "id": "original-daily-2026-10-02-05",
+    "topic": "Pediatrics: hydration — select all that apply",
+    "question": "An 8-month-old has vomiting and diarrhea. Which findings support concern for dehydration? Select all that apply.",
+    "choices": [
+      "A. The mouth and tongue are dry.",
+      "B. Crying produces no visible tears.",
+      "C. The number of wet diapers has decreased substantially from usual.",
+      "D. The mouth is moist and tears are present when crying.",
+      "E. Wet diapers remain at the usual frequency."
+    ],
+    "answer": "A, B, C",
+    "rationale": "A: Dry oral mucosa is consistent with fluid depletion.\n\nB: Crying without tears is a recognized dehydration sign in infants and young children.\n\nC: Reduced wet diapers suggest decreased urine output and should prompt hydration assessment.\n\nD: Moist mucosa and tears are reassuring compared with dryness and absent tears; this finding does not support dehydration in this question.\n\nE: Usual wet-diaper frequency is less supportive of fluid depletion than a significant decline. No single reassuring finding rules out dehydration.",
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale checked against the linked authoritative sources. Not an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-02",
+    "source_urls": [
+      "https://medlineplus.gov/dehydration.html"
+    ]
+  },
+  {
+    "id": "original-daily-2026-10-02-06",
+    "topic": "Mental health: panic support",
+    "question": "A client with diagnosed panic disorder is having a typical panic episode after urgent medical causes have been assessed and excluded. The client asks, \"What can I do right now?\" Which response is most helpful?",
+    "choices": [
+      "A. \"Try to breathe faster until the sensation stops.\"",
+      "B. \"Focus on slow breathing; I will help you pace it while this episode passes.\"",
+      "C. \"Drink a strong coffee to improve your concentration.\"",
+      "D. \"You must immediately leave every place where this feeling occurs.\""
+    ],
+    "answer": "B",
+    "rationale": "A: Faster breathing is not the recommended coping strategy and may worsen distress associated with overbreathing.\n\nB: Coaching slow breathing is a practical coping measure during an assessed panic episode. New or atypical symptoms still require reassessment rather than assuming panic.\n\nC: Caffeine can worsen panic symptoms; coffee is not a treatment for an acute episode.\n\nD: Automatically escaping every triggering situation can reinforce avoidance. Immediate care should focus on safety and coping; longer-term treatment can address avoidance.",
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale checked against the linked authoritative sources. Not an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-02",
+    "source_urls": [
+      "https://www.nhs.uk/mental-health/conditions/panic-disorder/"
+    ]
+  },
+  {
+    "id": "original-daily-2026-10-02-07",
+    "topic": "Delegation: change in condition",
+    "question": "An RN delegates walking a previously stable client to trained assistive personnel. Before the walk, the assistant reports that the client now feels dizzy when sitting up. What should the RN do?",
+    "choices": [
+      "A. Tell the assistant to proceed because the task was already delegated.",
+      "B. Ask the assistant to independently diagnose the cause of the dizziness.",
+      "C. Pause the walk and reassess the client before deciding how to proceed.",
+      "D. Replace the assistant with another assistant without assessing the client."
+    ],
+    "answer": "C",
+    "rationale": "A: A new symptom changes the circumstances supporting delegation. Continuing without reassessment may be unsafe.\n\nB: Clinical assessment and decisions about the cause and significance of new symptoms require nursing judgment.\n\nC: The RN remains accountable for oversight and must respond to a change in condition. Reassessment determines whether the activity remains appropriate.\n\nD: Changing personnel does not address the new clinical concern or remove the need for RN assessment.",
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale checked against the linked authoritative sources. Not an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-02",
+    "source_urls": [
+      "https://www.ncsbn.org/public-files/NGND-PosPaper_06.pdf"
+    ]
+  },
+  {
+    "id": "original-daily-2026-10-02-08",
+    "topic": "Safety: catheter care — select all that apply",
+    "question": "A client still requires an indwelling urinary catheter. Which actions help reduce catheter-associated infection risk during routine maintenance? Select all that apply.",
+    "choices": [
+      "A. Keep the drainage bag below bladder level and off the floor.",
+      "B. Disconnect the tubing each shift to rinse the connection.",
+      "C. Maintain a closed drainage system.",
+      "D. Clean the meatal area during routine daily hygiene.",
+      "E. Apply antiseptic to the meatal area each shift solely to prevent infection."
+    ],
+    "answer": "A, C, D",
+    "rationale": "A: Below-bladder placement supports drainage; keeping the bag off the floor is part of recommended maintenance.\n\nB: Routine disconnection breaks the closed system and is not recommended.\n\nC: Maintaining a closed system limits opportunities for contamination after aseptic insertion.\n\nD: Routine hygiene is appropriate while the catheter is in place.\n\nE: Routine antiseptic meatal cleaning solely to prevent catheter-associated infection is not recommended. This differs from antiseptic preparation used for insertion.",
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale checked against the linked authoritative sources. Not an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-02",
+    "source_urls": [
+      "https://www.cdc.gov/infection-control/hcp/cauti/summary-of-recommendations.html"
+    ]
+  },
+  {
+    "id": "original-daily-2026-10-02-09",
+    "topic": "Pharmacology: opioid reversal monitoring",
+    "question": "A client treated with naloxone for an opioid overdose becomes more alert and breathes more effectively. Why should the nurse continue close monitoring and emergency care?",
+    "choices": [
+      "A. Opioid effects can return after naloxone wears off, requiring further treatment.",
+      "B. One naloxone dose permanently removes every opioid from the body.",
+      "C. Improved alertness means recurrence is impossible and monitoring can stop.",
+      "D. Only the injection site needs observation after breathing improves."
+    ],
+    "answer": "A",
+    "rationale": "A: Recurrent sedation and breathing difficulty can occur after an initial response. Continue monitoring and be prepared for repeat naloxone and respiratory support according to the emergency plan.\n\nB: Naloxone blocks opioid effects; it does not permanently eliminate all opioid drug from the body.\n\nC: An initial response does not rule out recurrent toxicity. Emergency assessment and monitoring remain necessary.\n\nD: Breathing and responsiveness remain central concerns, not just the injection site.",
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale checked against the linked authoritative sources. Not an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-02",
+    "source_urls": [
+      "https://medlineplus.gov/druginfo/meds/a612022.html"
+    ]
+  },
+  {
+    "id": "original-daily-2026-10-02-10",
+    "topic": "Adult health: osteoporosis teaching",
+    "question": "A client is prescribed a standard oral alendronate tablet for osteoporosis. Which statement shows correct understanding of administration instructions?",
+    "choices": [
+      "A. \"I will take it with milk and breakfast to protect my stomach.\"",
+      "B. \"I will chew it and take it at bedtime.\"",
+      "C. \"I will take my calcium supplement at exactly the same time.\"",
+      "D. \"I will take it after getting up with plain water, wait at least 30 minutes before food or other medicines, and stay upright for at least 30 minutes and until after my first food.\""
+    ],
+    "answer": "D",
+    "rationale": "A: Milk and food interfere with proper administration. The tablet is taken with plain water before the first food or drink of the day.\n\nB: Standard tablets are swallowed whole, not chewed, and are not taken at bedtime; lying down too soon increases esophageal irritation risk.\n\nC: Other oral medicines, including calcium, should wait at least 30 minutes after alendronate.\n\nD: Take the tablet with a full glass of plain water after rising. Remain sitting or standing at least 30 minutes and until after the first food, and delay food, drinks other than water, and other medicines at least 30 minutes.",
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale checked against the linked authoritative sources. Not an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-02",
+    "source_urls": [
+      "https://medlineplus.gov/druginfo/meds/a601011.html"
+    ]
+  }
+]
