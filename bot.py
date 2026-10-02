@@ -12,6 +12,12 @@ from zoneinfo import ZoneInfo
 ROOT = Path(__file__).resolve().parent
 
 
+def database_path():
+    directory = Path(os.getenv("BOT_DATA_DIR", str(ROOT)))
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory / "progress.sqlite3"
+
+
 def load_questions(path):
     questions = json.loads(Path(path).read_text())
     if not isinstance(questions, list) or len(questions) < 10:
@@ -44,8 +50,11 @@ def render(q):
             f"**Answer:** ||{answer}||\n**Rationale:** ||{rationale}||")
 
 
-def send(token, channel, content, nonce):
-    payload = json.dumps({"content": content, "allowed_mentions": {"parse": []},
+def send(token, channel, content, nonce, role_id=None):
+    allowed_mentions = {"parse": []}
+    if role_id:
+        allowed_mentions["roles"] = [str(role_id)]
+    payload = json.dumps({"content": content, "allowed_mentions": allowed_mentions,
                           "nonce": str(nonce), "enforce_nonce": True}).encode()
     for attempt in range(5):
         request = urllib.request.Request(
@@ -72,9 +81,10 @@ def main():
     if not (0 <= hour <= 23 and 0 <= minute <= 59):
         raise ValueError("POST_TIME must be HH:MM in 24-hour time.")
     questions = load_questions(os.getenv("QUESTIONS_FILE", str(ROOT / "questions.json")))
-    with sqlite3.connect(ROOT / "progress.sqlite3") as db:
+    with sqlite3.connect(database_path()) as db:
         db.execute("CREATE TABLE IF NOT EXISTS posts (day TEXT, question_id TEXT, "
                    "message_id TEXT, PRIMARY KEY(day, question_id))")
+        db.execute("CREATE TABLE IF NOT EXISTS daily_alerts (day TEXT PRIMARY KEY, message_id TEXT)")
         while True:
             now = datetime.now(zone)
             day = now.date().isoformat()
@@ -99,6 +109,22 @@ def main():
                         break
                 if len(posted) < 10 and not candidates:
                     print("Question bank exhausted. Import more questions and restart.", flush=True)
+                role_id = os.getenv("ALERTS_ROLE_ID")
+                if posted and role_id and not db.execute(
+                    "SELECT 1 FROM daily_alerts WHERE day = ?", (day,)
+                ).fetchone():
+                    try:
+                        import hashlib
+                        nonce = int.from_bytes(hashlib.sha256(
+                            f"{channel}:{day}:alert".encode()).digest()[:8], "big")
+                        message_id = send(token, channel,
+                            f"<@&{role_id}> 💊 Today's NCLEXapro questions are above! "
+                            "Try them before revealing the answers and rationales.",
+                            nonce, role_id=role_id)
+                        db.execute("INSERT INTO daily_alerts VALUES (?, ?)", (day, message_id))
+                        db.commit()
+                    except (urllib.error.URLError, TimeoutError, RuntimeError) as error:
+                        print(f"Alert failed ({type(error).__name__}); retrying in 60 seconds.", flush=True)
             time.sleep(60)
 
 

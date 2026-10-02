@@ -3,3 +3,4 @@ questions.json
 *.sqlite3
 *.sqlite3-*
 __pycache__/
+question-bank/

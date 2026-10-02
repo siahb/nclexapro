@@ -30,6 +30,40 @@ python bot.py
 
 Choose your actual IANA time zone. The process must stay running on a computer or server. A restart after the scheduled time posts the remaining questions for the current day; missed previous days are not backfilled. Restart after changing the question file. Preserve `progress.sqlite3` to retain posting history, and run only one instance per channel.
 
+## Opt-in reaction alerts
+
+To run both the daily scheduler and reaction subscriptions, install dependencies with
+`pip install -r requirements.txt`, then use `python reaction_roles.py` as the start command.
+Do not also run `python bot.py`; that would start a second scheduler.
+
+Set `ALERTS_ROLE_ID=1555385673828147340` and
+`ANNOUNCEMENT_CHANNEL_ID=1401740870428135594` alongside the other environment variables.
+Use `BOT_DATA_DIR` for a persistent disk directory so announcements, alerts, and used-question
+history survive deployments. Keep one running instance.
+
+In Discord, grant the bot **Manage Roles**, and move its role above **NCLEXapro Alerts**.
+For the announcement channel, allow **View Channel**, **Send Messages**,
+**Read Message History**, and **Add Reactions** for the bot. Members need **View Channel**,
+**Read Message History**, and **Add Reactions** to subscribe. They do not need Send Messages.
+Enable **Allow anyone to mention this role** on the alerts role so the daily ping works
+without granting the bot broad permission to mention everyone. Limit who can send messages
+if you want to prevent other users tagging the alerts role. No privileged Gateway intents are required.
+
+On its first successful startup the bot posts the subscription announcement without a ping,
+then adds 💊. Members gain the role when they react and lose it when they remove their reaction.
+The scheduler tags only that role, once per daily batch after posting questions.
+It sends no subscriber ping when there are no new questions.
+
+Role assignment requires the bot to be online. Existing reactions are reapplied on restart;
+if someone removed their reaction while the bot was offline, they should add and remove it
+again once it is online, or ask a moderator to remove the role. Moderators should not clear
+all reactions from the announcement; bulk removal does not unsubscribe everyone automatically.
+
+Reaction events supply a Discord user ID, which is used to look up the member and modify
+their alerts role. Subscription membership is held by Discord, not an additional local
+student database. The local database stores the announcement channel/message IDs and daily
+alert message IDs. Personal notification and mute settings can override role notifications.
+
 ## Question format
 
 The following is a format illustration, not clinical study content:
