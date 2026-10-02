@@ -29,6 +29,23 @@ def prepare_questions():
     return load_questions(path)
 
 
+def announcement_content():
+    return (
+        "💊 **Meet NCLEXapro — your daily dose of NCLEX practice!**\n\n"
+        f"Daily practice questions are posted in dated threads in <#{os.environ['DISCORD_CHANNEL_ID']}> "
+        "with hidden answers, rationales, and explanations for every choice.\n\n"
+        "**Question sources:** The current starter set contains original NCLEX-style questions. "
+        "UWorld questions supplied with permission may also be included for this private study group. "
+        "NCLEXapro is not affiliated with UWorld.\n\n"
+        "🔒 **Please do not copy, screenshot, forward, or share these questions anywhere outside "
+        "this private Discord server.**\n\n"
+        "React with 💊 below to subscribe to **NCLEXapro Alerts**. "
+        "Remove your reaction to unsubscribe. Only subscribers are tagged once per daily batch.\n\n"
+        "The default posting time is 9 AM Pacific; your server administrator can confirm "
+        "the configured schedule. Personal Discord notification settings still apply."
+    )
+
+
 class NCLEXapro(discord.Client):
     def __init__(self):
         intents = discord.Intents.none()
@@ -65,17 +82,12 @@ class NCLEXapro(discord.Client):
                 if row:
                     # Do not silently recreate a deleted announcement and lose subscriptions.
                     message = await channel.fetch_message(int(row[0]))
+                    if message.content != announcement_content():
+                        await message.edit(content=announcement_content(),
+                                           allowed_mentions=discord.AllowedMentions.none())
                 else:
                     message = await channel.send(
-                        "💊 **Meet NCLEXapro — your daily dose of NCLEX practice!**\n\n"
-                        f"Daily practice questions will be posted in <#{os.environ['DISCORD_CHANNEL_ID']}> "
-                        "with hidden answers, rationales, and explanations for every choice.\n\n"
-                        "React with 💊 below to subscribe to **NCLEXapro Alerts**. "
-                        "Remove your reaction to unsubscribe. Only subscribers are tagged, "
-                        "once per daily batch — no @everyone or @here pings.\n\n"
-                        "The default posting time is 9 AM Pacific; your server administrator "
-                        "can confirm the configured schedule. Personal Discord notification settings still apply.",
-                        allowed_mentions=discord.AllowedMentions.none())
+                        announcement_content(), allowed_mentions=discord.AllowedMentions.none())
                     db.execute("INSERT INTO subscriptions_config VALUES (?, ?)",
                                (str(self.channel_id), str(message.id)))
                     db.commit()
