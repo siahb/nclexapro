@@ -32,6 +32,7 @@ def prepare_questions():
 def announcement_content():
     return (
         "💊 **Meet NCLEXapro — your daily dose of NCLEX practice!**\n\n"
+        "**Created by Siah.**\n\n"
         f"Daily practice questions are posted in dated threads in <#{os.environ['DISCORD_CHANNEL_ID']}> "
         "with hidden answers, rationales, and explanations for every choice.\n\n"
         "**Question sources:** The current starter set contains original NCLEX-style questions. "
