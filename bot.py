@@ -1,5 +1,6 @@
 """Post ten imported practice questions daily using Discord's REST API."""
 import json
+import hashlib
 import os
 import sqlite3
 import time
@@ -50,27 +51,96 @@ def render(q):
             f"**Answer:** ||{answer}||\n**Rationale:** ||{rationale}||")
 
 
-def send(token, channel, content, nonce, role_id=None):
-    allowed_mentions = {"parse": []}
-    if role_id:
-        allowed_mentions["roles"] = [str(role_id)]
-    payload = json.dumps({"content": content, "allowed_mentions": allowed_mentions,
-                          "nonce": str(nonce), "enforce_nonce": True}).encode()
+def discord_request(token, path, payload=None, method=None):
+    body = json.dumps(payload).encode() if payload is not None else None
     for attempt in range(5):
         request = urllib.request.Request(
-            f"https://discord.com/api/v10/channels/{channel}/messages",
-            data=payload, headers={"Authorization": f"Bot {token}",
+            f"https://discord.com/api/v10/{path}",
+            data=body, method=method, headers={"Authorization": f"Bot {token}",
                                    "Content-Type": "application/json",
                                    "User-Agent": "NCLEXapro/1.0"})
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
-                return json.load(response)["id"]
+                return json.load(response)
         except urllib.error.HTTPError as error:
             if error.code != 429:
                 raise
             delay = float(json.loads(error.read()).get("retry_after", 5))
             time.sleep(max(delay, 1))
     raise RuntimeError("Discord rate limit persisted; retry on the next scheduler pass.")
+
+
+def nonce_for(value):
+    return int.from_bytes(hashlib.sha256(value.encode()).digest()[:8], "big")
+
+
+def send(token, channel, content, nonce, role_id=None):
+    allowed_mentions = {"parse": []}
+    if role_id:
+        allowed_mentions["roles"] = [str(role_id)]
+    return discord_request(token, f"channels/{channel}/messages", {
+        "content": content, "allowed_mentions": allowed_mentions,
+        "nonce": str(nonce), "enforce_nonce": True})["id"]
+
+
+def initialize_history(db):
+    db.execute("CREATE TABLE IF NOT EXISTS posts (day TEXT, question_id TEXT, "
+               "message_id TEXT, PRIMARY KEY(day, question_id))")
+    db.execute("CREATE TABLE IF NOT EXISTS daily_threads (day TEXT, channel_id TEXT, "
+               "parent_id TEXT, thread_id TEXT, PRIMARY KEY(day, channel_id))")
+    db.commit()
+
+
+def daily_thread(db, token, channel, now):
+    day = now.date().isoformat()
+    row = db.execute("SELECT parent_id, thread_id FROM daily_threads "
+                     "WHERE day = ? AND channel_id = ?", (day, channel)).fetchone()
+    label = f"{now:%B} {now.day}, {now.year}"
+    if row is None:
+        role_id = os.getenv("ALERTS_ROLE_ID")
+        mention = f"<@&{role_id}> " if role_id else ""
+        parent_id = send(token, channel,
+            f"{mention}💊 **NCLEXapro • {label}**\n"
+            "Today's practice questions are in the thread attached to this post. "
+            "React ✅ to each question when you're done; reveal the hidden answers to review.",
+            nonce_for(f"{channel}:{day}:thread-parent"), role_id=role_id)
+        db.execute("INSERT INTO daily_threads VALUES (?, ?, ?, NULL)",
+                   (day, channel, parent_id))
+        db.commit()
+        thread_id = None
+    else:
+        parent_id, thread_id = row
+    if thread_id is None:
+        # Recover a successful thread creation if the process stopped before saving its ID.
+        message = discord_request(token, f"channels/{channel}/messages/{parent_id}")
+        thread = message.get("thread")
+        if thread is None:
+            thread = discord_request(token, f"channels/{channel}/messages/{parent_id}/threads",
+                {"name": f"NCLEXapro • {label}", "auto_archive_duration": 1440})
+        thread_id = str(thread["id"])
+        db.execute("UPDATE daily_threads SET thread_id = ? WHERE day = ? AND channel_id = ?",
+                   (thread_id, day, channel))
+        db.commit()
+    return thread_id
+
+
+def post_daily_batch(db, token, channel, questions, now):
+    day = now.date().isoformat()
+    posted = {row[0] for row in db.execute(
+        "SELECT question_id FROM posts WHERE day = ?", (day,))}
+    used = {row[0] for row in db.execute("SELECT question_id FROM posts")}
+    candidates = [q for q in questions if q["id"] not in used][:max(0, 10 - len(posted))]
+    if not candidates:
+        return 0
+    thread_id = daily_thread(db, token, channel, now)
+    count = 0
+    for q in candidates:
+        message_id = send(token, thread_id, render(q), nonce_for(f"{channel}:{day}:{q['id']}"))
+        db.execute("INSERT INTO posts VALUES (?, ?, ?)", (day, q["id"], message_id))
+        db.commit()
+        count += 1
+        time.sleep(1)
+    return count
 
 
 def main():
@@ -82,49 +152,17 @@ def main():
         raise ValueError("POST_TIME must be HH:MM in 24-hour time.")
     questions = load_questions(os.getenv("QUESTIONS_FILE", str(ROOT / "questions.json")))
     with sqlite3.connect(database_path()) as db:
-        db.execute("CREATE TABLE IF NOT EXISTS posts (day TEXT, question_id TEXT, "
-                   "message_id TEXT, PRIMARY KEY(day, question_id))")
-        db.execute("CREATE TABLE IF NOT EXISTS daily_alerts (day TEXT PRIMARY KEY, message_id TEXT)")
+        initialize_history(db)
         while True:
             now = datetime.now(zone)
             day = now.date().isoformat()
             if (now.hour, now.minute) >= (hour, minute):
-                posted = {row[0] for row in db.execute(
-                    "SELECT question_id FROM posts WHERE day = ?", (day,))}
-                used = {row[0] for row in db.execute("SELECT question_id FROM posts")}
-                candidates = [q for q in questions if q["id"] not in used]
-                for q in candidates[:max(0, 10 - len(posted))]:
-                    try:
-                        import hashlib
-                        nonce = int.from_bytes(hashlib.sha256(
-                            f"{channel}:{day}:{q['id']}".encode()).digest()[:8], "big")
-                        message_id = send(token, channel, render(q), nonce)
-                        db.execute("INSERT INTO posts VALUES (?, ?, ?)",
-                                   (day, q["id"], message_id))
-                        db.commit()
-                        posted.add(q["id"])
-                        time.sleep(1)
-                    except (urllib.error.URLError, TimeoutError, RuntimeError) as error:
-                        print(f"Post failed ({type(error).__name__}); retrying in 60 seconds.", flush=True)
-                        break
-                if len(posted) < 10 and not candidates:
-                    print("Question bank exhausted. Import more questions and restart.", flush=True)
-                role_id = os.getenv("ALERTS_ROLE_ID")
-                if posted and role_id and not db.execute(
-                    "SELECT 1 FROM daily_alerts WHERE day = ?", (day,)
-                ).fetchone():
-                    try:
-                        import hashlib
-                        nonce = int.from_bytes(hashlib.sha256(
-                            f"{channel}:{day}:alert".encode()).digest()[:8], "big")
-                        message_id = send(token, channel,
-                            f"<@&{role_id}> 💊 Today's NCLEXapro questions are above! "
-                            "Try them before revealing the answers and rationales.",
-                            nonce, role_id=role_id)
-                        db.execute("INSERT INTO daily_alerts VALUES (?, ?)", (day, message_id))
-                        db.commit()
-                    except (urllib.error.URLError, TimeoutError, RuntimeError) as error:
-                        print(f"Alert failed ({type(error).__name__}); retrying in 60 seconds.", flush=True)
+                try:
+                    count = post_daily_batch(db, token, channel, questions, now)
+                    if count:
+                        print(f"Posted {count} questions to today's thread.", flush=True)
+                except (urllib.error.URLError, TimeoutError, RuntimeError) as error:
+                    print(f"Post failed ({type(error).__name__}: {error}); retrying in 60 seconds.", flush=True)
             time.sleep(60)
 
 
