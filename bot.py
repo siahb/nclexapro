@@ -18,6 +18,19 @@ def posting_allowed(now, hour, minute, start_date=None):
     return (start_date is None or now.date() >= start_date) and (now.hour, now.minute) >= (hour, minute)
 
 
+def scheduled_post_time(now, channel, replay=0):
+    # LMC launch recovery: October 2 only at 3:15 PM Pacific, then noon daily.
+    if not replay and channel == "1401745644175229061":
+        pacific = now.astimezone(ZoneInfo("America/Los_Angeles"))
+        is_recovery_day = pacific.date() == date(2026, 10, 2)
+        target_hour = 15 if is_recovery_day else 12
+        target_minute = 15 if is_recovery_day else 0
+        target = pacific.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+        local_target = target.astimezone(now.tzinfo)
+        return local_target.hour, local_target.minute
+    return tuple(map(int, os.getenv("POST_TIME", "12:00").strip().split(":")))
+
+
 def launch_info():
     value = os.getenv("POST_START_DATE", "2026-10-02")
     if not value:
@@ -38,7 +51,7 @@ def database_path():
 
 def scheduler_database_path(channel, replay):
     base = database_path()
-    test_channel = os.getenv("TEST_CHANNEL_ID", "1555389202533716009")
+    test_channel = str(int(os.getenv("TEST_CHANNEL_ID", "1555389202533716009").strip()))
     if not 0 <= replay <= 10:
         raise ValueError("TEST_REPLAY must be 0 (normal posting) or a test number from 1 to 10.")
     if replay:
@@ -241,11 +254,16 @@ def daily_thread(db, token, channel, now, replay=0):
     if replay:
         label += f" • Test {replay}"
     if row is None:
-        role_id = os.getenv("ALERTS_ROLE_ID") if not replay else None
+        role_id = str(int(os.environ["ALERTS_ROLE_ID"].strip())) if not replay and os.getenv("ALERTS_ROLE_ID") else None
         mention = f"<@&{role_id}> " if role_id else ""
+        recovery_notice = ("Sorry, a bug prevented today\'s questions from posting at 12 PM. "
+                           "Here is today\'s set at 3:15 PM! Starting tomorrow, questions will post "
+                           "at 12 PM Pacific every day.\n\n") if (
+                               not replay and channel == "1401745644175229061"
+                               and day == "2026-10-02") else ""
         parent_id = send(token, channel,
             f"{mention}💊 **NCLEXapro • {label}**\n"
-            "Open the attached thread for today's 10-question practice set.",
+            f"{recovery_notice}Open the attached thread for today's 10-question practice set.",
             nonce_for(f"{channel}:{day}:thread-parent:replay-{replay}"), role_id=role_id,
             embeds=[{"title": "Your daily dose of practice", "description": study_instructions(minutes),
                      "color": 0x14B8A6, "footer": {"text": "Created by Siah • Keep questions in this private server"}}])
@@ -310,15 +328,14 @@ def post_daily_batch(db, token, channel, questions, now, replay=0):
 
 def main():
     token = os.environ["DISCORD_BOT_TOKEN"]
-    channel = os.environ["DISCORD_CHANNEL_ID"]
+    channel = str(int(os.environ["DISCORD_CHANNEL_ID"].strip()))
     replay = int(os.getenv("TEST_REPLAY", "0"))
     history = scheduler_database_path(channel, replay)
     start_value = os.getenv("POST_START_DATE", "")
     start_date = date.fromisoformat(start_value) if start_value else None
-    if start_date and not replay:
-        print(f"Questions held until {start_date} at {os.getenv('POST_TIME', '09:00')} {os.getenv('BOT_TIMEZONE', 'UTC')}; subscriptions remain open.", flush=True)
     zone = ZoneInfo(os.getenv("BOT_TIMEZONE", "UTC"))
-    hour, minute = map(int, os.getenv("POST_TIME", "09:00").split(":"))
+    hour, minute = scheduled_post_time(datetime.now(zone), channel, replay)
+    print(f"Posting schedule: {hour:02d}:{minute:02d} {zone}; channel {channel}; start date {start_date}; replay {replay}.", flush=True)
     if not (0 <= hour <= 23 and 0 <= minute <= 59):
         raise ValueError("POST_TIME must be HH:MM in 24-hour time.")
     questions = load_questions(os.getenv("QUESTIONS_FILE", str(ROOT / "questions.json")))
@@ -328,6 +345,7 @@ def main():
         while True:
             now = datetime.now(zone)
             day = now.date().isoformat()
+            hour, minute = scheduled_post_time(now, channel, replay)
             if not replay and (last_refresh is None or time.monotonic() - last_refresh >= 300):
                 last_refresh = time.monotonic()
                 try:
