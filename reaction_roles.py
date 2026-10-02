@@ -69,7 +69,7 @@ def announcement_content():
         "💊 **Meet NCLEXapro — your daily dose of NCLEX practice!**\n\n"
         "**Created by Siah.**\n\n"
         + launch_info()
-        +         f"Find the daily dated threads in <#{os.environ['DISCORD_CHANNEL_ID']}>.\n\n"
+        +         f"Find the daily dated threads in <#{int(os.environ['DISCORD_CHANNEL_ID'])}>.\n\n"
         "**Reminders:** React 💊 here to subscribe; remove it to unsubscribe. "
         "Subscribers get one daily role ping. "
         "Check your Discord notification settings if alerts are muted.\n\n"
