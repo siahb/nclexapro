@@ -7,11 +7,27 @@ import time
 import tempfile
 import urllib.error
 import urllib.request
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent
+
+
+def posting_allowed(now, hour, minute, start_date=None):
+    return (start_date is None or now.date() >= start_date) and (now.hour, now.minute) >= (hour, minute)
+
+
+def launch_info():
+    value = os.getenv("POST_START_DATE", "2026-10-02")
+    if not value:
+        return ""
+    start = date.fromisoformat(value)
+    hour, minute = map(int, os.getenv("POST_TIME", "09:00").split(":"))
+    display_time = datetime(2000, 1, 1, hour, minute).strftime("%I:%M %p").lstrip("0")
+    zone = os.getenv("BOT_TIMEZONE", "UTC")
+    display_zone = "Pacific" if zone == "America/Los_Angeles" else zone
+    return (f"**First questions: {start:%B} {start.day}, {start.year} at {display_time} {display_zone}.**\n\n")
 
 
 def database_path():
@@ -297,6 +313,10 @@ def main():
     channel = os.environ["DISCORD_CHANNEL_ID"]
     replay = int(os.getenv("TEST_REPLAY", "0"))
     history = scheduler_database_path(channel, replay)
+    start_value = os.getenv("POST_START_DATE", "")
+    start_date = date.fromisoformat(start_value) if start_value else None
+    if start_date and not replay:
+        print(f"Questions held until {start_date} at {os.getenv('POST_TIME', '09:00')} {os.getenv('BOT_TIMEZONE', 'UTC')}; subscriptions remain open.", flush=True)
     zone = ZoneInfo(os.getenv("BOT_TIMEZONE", "UTC"))
     hour, minute = map(int, os.getenv("POST_TIME", "09:00").split(":"))
     if not (0 <= hour <= 23 and 0 <= minute <= 59):
@@ -317,7 +337,7 @@ def main():
                         print(f"Imported {added} new original questions from the daily feed.", flush=True)
                 except (urllib.error.URLError, TimeoutError, ValueError, OSError) as error:
                     print(f"Question feed refresh failed ({error}); retaining the current bank.", flush=True)
-            if replay or (now.hour, now.minute) >= (hour, minute):
+            if replay or posting_allowed(now, hour, minute, start_date):
                 try:
                     count = post_daily_batch(db, token, channel, questions, now, replay=replay)
                     if count:
