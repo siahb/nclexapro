@@ -180,16 +180,18 @@ normal daily posts continue. A completed run will not repeat on restart; change 
 number to create another test. Set `QUIZ_TEST_RUN=0` to disable new test posting.
 Keep one replica and the persistent volume attached.
 
-Each public question has an **Answer privately** button, with no public answer or rationale.
-It opens an ephemeral panel. Choose one answer, or every applicable option for a
-select-all-that-apply item, then press **Submit answer**. Only the interacting student sees
+Each public question has answer-letter buttons, or a select-all-that-apply dropdown, with no
+public answer or rationale. Tap a letter to submit a single answer. For multiple answers,
+select every applicable choice and confirm the dropdown to submit. Only the interacting student sees
 their selection, result, and option-by-option rationale. Individual answers, student IDs,
 and scores are not written to the quiz database. Discord still processes the interactions;
 this is privacy from classmates, not anonymity from Discord.
 
 The volume stores question snapshots and test thread/message IDs so public buttons work
-after restarts. Open private panels expire after ten minutes and do not survive a restart;
-click the public button again to open a new one. Retrying is allowed. Test threads archive
+after restarts. Redeploying upgrades the current run's saved question messages to inline
+controls without posting another set. Older unmodified buttons retain their private-panel
+fallback; those panels expire after ten minutes or a restart. Retrying is allowed.
+Discord places private feedback at the bottom of the thread; selections are made beside the question. Test threads archive
 after 24 hours of inactivity; find them under **Threads → Archived/Closed**. Reopen the thread
 in Discord if archived controls cannot be used. Deleting test messages does not reset a run.
 
