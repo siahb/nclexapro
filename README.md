@@ -2,6 +2,22 @@
 
 Daily NCLEX practice for the Los Medanos College RN program.
 
+## Daily question feed
+
+The ChatGPT automation generates ten original mixed NCLEX-style questions at 8 AM Pacific
+and appends them to `generated-questions.json` in this public repository. Only original
+generated content belongs in that feed; do not upload imported publisher questions or secrets.
+
+With `TEST_REPLAY=0`, the Railway bot refreshes the feed every five minutes, appends new
+question IDs to `/data/questions.json`, and reloads the bank without a restart. Exact duplicate
+prompts are skipped; existing question IDs cannot be changed by the feed. The generator also
+compares earlier questions to avoid paraphrased repeats. Imported private questions are preserved.
+Feed failures keep the current bank intact; an empty bank stops posts rather than repeating them.
+
+The existing 9 AM Pacific schedule then posts up to ten unused questions. Generation failures
+or delays can affect readiness; check the scheduled task and Railway logs before launch.
+Test replays remain isolated and do not refresh the live feed.
+
 ## Daily threads
 
 ### Ten test runs

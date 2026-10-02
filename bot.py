@@ -4,6 +4,7 @@ import hashlib
 import os
 import sqlite3
 import time
+import tempfile
 import urllib.error
 import urllib.request
 from datetime import datetime
@@ -36,6 +37,10 @@ def scheduler_database_path(channel, replay):
 
 def load_questions(path):
     questions = json.loads(Path(path).read_text())
+    return validate_questions(questions)
+
+
+def validate_questions(questions):
     if not isinstance(questions, list) or len(questions) < 10:
         raise ValueError("Import at least 10 questions as a JSON array.")
     ids = set()
@@ -55,6 +60,55 @@ def load_questions(path):
         if len(render(q)) > 2000:
             raise ValueError(f"Question {q['id']} exceeds Discord's message limit.")
     return questions
+
+
+def refresh_question_feed():
+    """Append new original questions without replacing private imported questions."""
+    url = os.getenv("QUESTION_FEED_URL",
+        "https://raw.githubusercontent.com/siahb/nclexapro/main/generated-questions.json")
+    if not url:
+        return 0
+    request = urllib.request.Request(url, headers={"User-Agent": "NCLEXapro/1.0", "Cache-Control": "no-cache"})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        raw = response.read(8 * 1024 * 1024 + 1)
+    if len(raw) > 8 * 1024 * 1024:
+        raise ValueError("Question feed exceeds the 8 MiB size limit.")
+    incoming = json.loads(raw)
+    if not isinstance(incoming, list):
+        raise ValueError("Question feed must be a JSON array.")
+    path = Path(os.getenv("QUESTIONS_FILE", str(ROOT / "questions.json")))
+    existing = load_questions(path)
+    by_id = {q["id"]: q for q in existing}
+    normalize = lambda value: " ".join(value.casefold().split())
+    prompts = {normalize(q["question"]) for q in existing}
+    added = []
+    for q in incoming:
+        if not isinstance(q, dict) or not isinstance(q.get("id"), str) or not isinstance(q.get("question"), str):
+            raise ValueError("Malformed question in feed.")
+        if q["id"] in by_id:
+            if q != by_id[q["id"]]:
+                raise ValueError(f"Feed attempts to change existing question {q['id']}.")
+            continue
+        prompt = normalize(q["question"])
+        if prompt in prompts:
+            continue
+        added.append(q)
+        by_id[q["id"]] = q
+        prompts.add(prompt)
+    if not added:
+        return 0
+    merged = validate_questions(existing + added)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False, encoding="utf-8") as output:
+            temporary = Path(output.name)
+            json.dump(merged, output, indent=2, ensure_ascii=False)
+            output.write("\n")
+        os.replace(temporary, path)
+    finally:
+        if temporary and temporary.exists():
+            temporary.unlink()
+    return len(added)
 
 
 def render(q, number=1):
@@ -248,16 +302,28 @@ def main():
     if not (0 <= hour <= 23 and 0 <= minute <= 59):
         raise ValueError("POST_TIME must be HH:MM in 24-hour time.")
     questions = load_questions(os.getenv("QUESTIONS_FILE", str(ROOT / "questions.json")))
+    last_refresh = None
     with sqlite3.connect(history) as db:
         initialize_history(db)
         while True:
             now = datetime.now(zone)
             day = now.date().isoformat()
+            if not replay and (last_refresh is None or time.monotonic() - last_refresh >= 300):
+                last_refresh = time.monotonic()
+                try:
+                    added = refresh_question_feed()
+                    questions = load_questions(os.getenv("QUESTIONS_FILE", str(ROOT / "questions.json")))
+                    if added:
+                        print(f"Imported {added} new original questions from the daily feed.", flush=True)
+                except (urllib.error.URLError, TimeoutError, ValueError, OSError) as error:
+                    print(f"Question feed refresh failed ({error}); retaining the current bank.", flush=True)
             if replay or (now.hour, now.minute) >= (hour, minute):
                 try:
                     count = post_daily_batch(db, token, channel, questions, now, replay=replay)
                     if count:
                         print(f"Posted {count} questions to today's thread.", flush=True)
+                    elif not replay and not db.execute("SELECT 1 FROM posts WHERE day = ?", (day,)).fetchone():
+                        print("No unused questions available; waiting for the daily feed without repeating questions.", flush=True)
                     if replay:
                         print(f"Test replay {replay} complete; change TEST_REPLAY for the next test.", flush=True)
                         return
