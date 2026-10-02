@@ -120,7 +120,25 @@ def quiz_prompt(question, number=None):
     heading = f"Question {number:02d} / 10" if number is not None else "Your private practice"
     return (f"💊 **{heading} · {question.get('topic', 'NCLEX practice')}**\n\n"
             + question["question"] + "\n\n" + "\n".join(question["choices"]) +
-            "\n\nChoose your answer privately below. Nothing is submitted to the class.")
+            "\n\nAnswer using the buttons or dropdown below. Your choice and feedback are private. "
+            "For multiple answers, select every choice before confirming the dropdown.")
+
+
+def inline_answer_components(question, channel_id, run, key):
+    base = f"quiz:v2:{channel_id}:{run}:{key}"
+    letters = [choice.split(".", 1)[0] for choice in question["choices"]]
+    if len(answer_letters(question)) > 1:
+        return [{"type": 1, "components": [{
+            "type": 3, "custom_id": base + ":select",
+            "placeholder": "Select all that apply — selecting submits privately",
+            "min_values": 1, "max_values": len(letters),
+            "options": [{"label": choice[:100], "value": letter}
+                        for choice, letter in zip(question["choices"], letters)],
+        }]}]
+    buttons = [{"type": 2, "style": 1, "label": letter, "custom_id": base + ":" + letter}
+               for letter in letters]
+    return [{"type": 1, "components": buttons[i:i + 5]}
+            for i in range(0, len(buttons), 5)]
 
 
 def private_feedback(question, selected):
@@ -222,10 +240,10 @@ class NCLEXapro(discord.Client):
                 if row is None:
                     payload = {
                         "content": f"🧪 **NCLEXapro private quiz • Test {run}**\n"
-                                   "Open the attached thread for 10 practice questions. Tap **Answer privately**, "
-                                   "choose your answer(s), then **Submit answer**. Only you see your choices and feedback. "
+                                   "Open the attached thread for 10 practice questions. Use the answer buttons or dropdown "
+                                   "under each question. Dropdown selections submit when confirmed. Only you see your choices and feedback. "
                                    "No individual scores are stored. You can reopen a question to retry. "
-                                   "If a private panel expires after 10 minutes or a bot restart, reopen it. "
+                                   "You can answer directly beside the question; private feedback appears at the bottom of the thread. "
                                    "This is a test; there is no subscriber ping. Threads archive after 24 hours of inactivity.",
                         "allowed_mentions": {"parse": []},
                         "nonce": str(nonce_for(f"quiz-test:{channel_id}:{run}:parent")), "enforce_nonce": True}
@@ -253,6 +271,11 @@ class NCLEXapro(discord.Client):
                                         "WHERE channel_id = ? AND run = ? AND question_key = ?",
                                         (str(channel_id), run, key)).fetchone()
                     if record and record[0]:
+                        saved = json.loads(record[1])
+                        await asyncio.to_thread(discord_request, os.environ["DISCORD_BOT_TOKEN"],
+                            f"channels/{thread_id}/messages/{record[0]}",
+                            {"content": quiz_prompt(saved, number), "allowed_mentions": {"parse": []},
+                             "components": inline_answer_components(saved, channel_id, run, key)}, "PATCH")
                         continue
                     if record:
                         q = json.loads(record[1])
@@ -263,8 +286,7 @@ class NCLEXapro(discord.Client):
                     payload = {
                         "content": quiz_prompt(q, number), "allowed_mentions": {"parse": []},
                         "nonce": str(nonce_for(f"quiz-test:{channel_id}:{run}:{key}")), "enforce_nonce": True,
-                        "components": [{"type": 1, "components": [{"type": 2, "style": 1,
-                            "label": "Answer privately", "custom_id": f"quiz:v1:{channel_id}:{run}:{key}"}]}]}
+                        "components": inline_answer_components(q, channel_id, run, key)}
                     message = await asyncio.to_thread(discord_request, os.environ["DISCORD_BOT_TOKEN"],
                                                       f"channels/{thread_id}/messages", payload)
                     db.execute("UPDATE quiz_messages SET message_id = ? "
@@ -277,11 +299,12 @@ class NCLEXapro(discord.Client):
 
     async def on_interaction(self, interaction):
         custom_id = (interaction.data or {}).get("custom_id", "")
-        if not custom_id.startswith("quiz:v1:"):
+        if not custom_id.startswith(("quiz:v1:", "quiz:v2:")):
             return
         await interaction.response.defer(ephemeral=True, thinking=True)
         try:
-            _, _, channel_id, run, key = custom_id.split(":")
+            parts = custom_id.split(":")
+            _, version, channel_id, run, key = parts[:5]
             if int(channel_id) != QUIZ_TEST_CHANNEL:
                 raise ValueError("Unknown quiz channel.")
             with sqlite3.connect(quiz_database()) as db:
@@ -292,9 +315,28 @@ class NCLEXapro(discord.Client):
             if row is None or interaction.message is None or str(interaction.message.id) != row[1]:
                 raise ValueError("This test question is no longer available.")
             question = json.loads(row[0])
-            await interaction.followup.send(quiz_prompt(question), ephemeral=True,
-                view=PrivateAnswerView(question, interaction.user.id),
-                allowed_mentions=discord.AllowedMentions.none())
+            if version == "v1":
+                # Keep older test buttons usable until their messages are upgraded.
+                await interaction.followup.send(quiz_prompt(question), ephemeral=True,
+                    view=PrivateAnswerView(question, interaction.user.id),
+                    allowed_mentions=discord.AllowedMentions.none())
+                return
+            if len(parts) != 6:
+                raise ValueError("Invalid answer control.")
+            valid = {choice.split(".", 1)[0] for choice in question["choices"]}
+            multiple = len(answer_letters(question)) > 1
+            if parts[5] == "select" and multiple:
+                selected = (interaction.data or {}).get("values", [])
+            elif not multiple and parts[5] in valid:
+                selected = [parts[5]]
+            else:
+                raise ValueError("Invalid answer control.")
+            if not selected or len(set(selected)) != len(selected) or not set(selected) <= valid:
+                raise ValueError("Invalid selected choices.")
+            feedback = private_feedback(question, selected)
+            for offset in range(0, len(feedback), 1900):
+                await interaction.followup.send(feedback[offset:offset + 1900], ephemeral=True,
+                    allowed_mentions=discord.AllowedMentions.none())
         except Exception:
             log.exception("Could not open private quiz panel.")
             await interaction.followup.send("This question could not be opened. Please ask Siah to check the bot.",
