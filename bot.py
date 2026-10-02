@@ -74,13 +74,33 @@ def nonce_for(value):
     return int.from_bytes(hashlib.sha256(value.encode()).digest()[:8], "big")
 
 
-def send(token, channel, content, nonce, role_id=None):
-    allowed_mentions = {"parse": []}
+def send(token, channel, content, nonce, role_id=None, embeds=None, reply_to=None):
+    allowed_mentions = {"parse": [], "replied_user": False}
     if role_id:
         allowed_mentions["roles"] = [str(role_id)]
-    return discord_request(token, f"channels/{channel}/messages", {
+    payload = {
         "content": content, "allowed_mentions": allowed_mentions,
-        "nonce": str(nonce), "enforce_nonce": True})["id"]
+        "nonce": str(nonce), "enforce_nonce": True}
+    if embeds:
+        payload["embeds"] = embeds
+    if reply_to:
+        payload["message_reference"] = {"message_id": str(reply_to), "fail_if_not_exists": True}
+    return discord_request(token, f"channels/{channel}/messages", payload)["id"]
+
+
+def question_embed(q, number):
+    return {
+        "title": f"💊 Question {number} · {q.get('topic', 'NCLEX practice')}"[:256],
+        "description": q["question"] + "\n\n" + "\n".join(q["choices"]),
+        "color": 0x14B8A6,
+        "footer": {"text": "React ✅ when done • Reveal the spoiler reply to review"},
+    }
+
+
+def explanation(q):
+    answer = q["answer"].replace("||", "")
+    rationale = q["rationale"].replace("||", "")
+    return f"**Answer:** ||{answer}||\n**Why each option is right or wrong:**\n||{rationale}||"
 
 
 def initialize_history(db):
@@ -88,6 +108,8 @@ def initialize_history(db):
                "message_id TEXT, PRIMARY KEY(day, question_id))")
     db.execute("CREATE TABLE IF NOT EXISTS daily_threads (day TEXT, channel_id TEXT, "
                "parent_id TEXT, thread_id TEXT, PRIMARY KEY(day, channel_id))")
+    db.execute("CREATE TABLE IF NOT EXISTS question_deliveries (question_id TEXT PRIMARY KEY, "
+               "day TEXT, thread_id TEXT, message_id TEXT)")
     db.commit()
 
 
@@ -135,8 +157,19 @@ def post_daily_batch(db, token, channel, questions, now):
     thread_id = daily_thread(db, token, channel, now)
     count = 0
     for q in candidates:
-        message_id = send(token, thread_id, render(q), nonce_for(f"{channel}:{day}:{q['id']}"))
-        db.execute("INSERT INTO posts VALUES (?, ?, ?)", (day, q["id"], message_id))
+        delivery = db.execute("SELECT day, thread_id, message_id FROM question_deliveries "
+                              "WHERE question_id = ?", (q["id"],)).fetchone()
+        if delivery is None:
+            message_id = send(token, thread_id, "", nonce_for(f"{channel}:{day}:{q['id']}:embed"),
+                              embeds=[question_embed(q, len(posted) + count + 1)])
+            db.execute("INSERT INTO question_deliveries VALUES (?, ?, ?, ?)",
+                       (q["id"], day, thread_id, message_id))
+            db.commit()
+            delivery = (day, thread_id, message_id)
+        delivery_day, delivery_thread, message_id = delivery
+        send(token, delivery_thread, explanation(q),
+             nonce_for(f"{channel}:{delivery_day}:{q['id']}:explanation"), reply_to=message_id)
+        db.execute("INSERT INTO posts VALUES (?, ?, ?)", (delivery_day, q["id"], message_id))
         db.commit()
         count += 1
         time.sleep(1)

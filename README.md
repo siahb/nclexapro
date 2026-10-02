@@ -7,10 +7,12 @@ Daily NCLEX practice for the Los Medanos College RN program.
 The question channel receives one daily parent post, with the opt-in alerts role mentioned
 once. Questions are posted inside its thread, named `NCLEXapro • October 1, 2026` using
 the configured `BOT_TIMEZONE` (Pacific by default). Each question supports manual ✅ reactions.
-Threads auto-archive after 24 hours of inactivity; content is not deleted.
+Questions use teal embeds with the prompt and choices. Each has a spoiler reply for the
+answer and reasoning for every option. Reply notifications are disabled. Threads
+auto-archive after 24 hours of inactivity; content is not deleted.
 
 In the question channel, grant the bot **View Channel**, **Send Messages**,
-**Read Message History**, **Create Public Threads**, and **Send Messages in Threads**.
+**Read Message History**, **Create Public Threads**, **Send Messages in Threads**, and **Embed Links**.
 Members need **View Channel**, **Read Message History**, **Send Messages in Threads**,
 and **Add Reactions** to discuss and mark questions complete.
 
