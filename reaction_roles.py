@@ -7,7 +7,7 @@ from pathlib import Path
 
 import discord
 
-from bot import ROOT, database_path, load_questions, study_instructions, archive_duration, main as daily_scheduler
+from bot import ROOT, database_path, load_questions, study_instructions, archive_duration, launch_info, main as daily_scheduler
 
 log = logging.getLogger("nclexapro")
 EMOJI = "💊"
@@ -34,7 +34,8 @@ def announcement_content():
     return (
         "💊 **Meet NCLEXapro — your daily dose of NCLEX practice!**\n\n"
         "**Created by Siah.**\n\n"
-        f"Find the daily dated threads in <#{os.environ['DISCORD_CHANNEL_ID']}>.\n\n"
+        + launch_info()
+        +         f"Find the daily dated threads in <#{os.environ['DISCORD_CHANNEL_ID']}>.\n\n"
         "**Reminders:** React 💊 here to subscribe; remove it to unsubscribe. "
         "Subscribers get one daily role ping. "
         "Check your Discord notification settings if alerts are muted.\n\n"
