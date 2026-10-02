@@ -73,8 +73,7 @@ def announcement_content():
         "**Reminders:** React 💊 here to subscribe; remove it to unsubscribe. "
         "Subscribers get one daily role ping. "
         "Check your Discord notification settings if alerts are muted.\n\n"
-        "**Sources:** The starter questions are original NCLEX-style practice. "
-        "UWorld QBank questions shared with permission may also be included.\n\n"
+        "**Questions:** NCLEX practice questions with answers and rationales.\n\n"
         "🔒 **Please do not copy, screenshot, forward, or share these questions "
         "anywhere outside this private Discord server.**\n\n"
         + daily_posting_notice()
