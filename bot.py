@@ -326,6 +326,40 @@ def post_daily_batch(db, token, channel, questions, now, replay=0):
     return count
 
 
+def post_weekly_poll(db, token, channel, now, replay=0):
+    """One native topic poll on Sunday at noon Pacific, with no role ping."""
+    pacific = now.astimezone(ZoneInfo("America/Los_Angeles"))
+    if replay or pacific.weekday() != 6 or pacific.hour < 12:
+        return False
+    week = pacific.date().isoformat()
+    db.execute("CREATE TABLE IF NOT EXISTS weekly_polls "
+               "(week TEXT, channel_id TEXT, message_id TEXT, PRIMARY KEY(week, channel_id))")
+    if db.execute("SELECT 1 FROM weekly_polls WHERE week = ? AND channel_id = ?",
+                  (week, channel)).fetchone():
+        return False
+    topics = ["Pharmacology", "Adult med-surg", "Maternity & pediatrics",
+              "Mental health", "Prioritization & delegation"]
+    payload = {
+        "content": "💊 **What would you like more practice with next week?**\n"
+                   "Vote for one topic below! Voting closes in 24 hours. "
+                   "Daily practice sets stay mixed. Discord polls are not anonymous.",
+        "allowed_mentions": {"parse": []},
+        "nonce": str(nonce_for(f"{channel}:{week}:weekly-topic-poll")),
+        "enforce_nonce": True,
+        "poll": {
+            "question": {"text": "Which topic should we practice more?"},
+            "answers": [{"poll_media": {"text": topic}} for topic in topics],
+            "duration": 24,
+            "allow_multiselect": False,
+            "layout_type": 1,
+        },
+    }
+    message = discord_request(token, f"channels/{channel}/messages", payload)
+    db.execute("INSERT INTO weekly_polls VALUES (?, ?, ?)", (week, channel, str(message["id"])))
+    db.commit()
+    return True
+
+
 def main():
     token = os.environ["DISCORD_BOT_TOKEN"]
     channel = str(int(os.environ["DISCORD_CHANNEL_ID"].strip()))
@@ -355,6 +389,12 @@ def main():
                         print(f"Imported {added} new original questions from the daily feed.", flush=True)
                 except (urllib.error.URLError, TimeoutError, ValueError, OSError) as error:
                     print(f"Question feed refresh failed ({error}); retaining the current bank.", flush=True)
+            if not replay and (start_date is None or now.date() >= start_date):
+                try:
+                    if post_weekly_poll(db, token, channel, now):
+                        print("Weekly topic poll posted without an Alerts ping.", flush=True)
+                except (urllib.error.URLError, TimeoutError, RuntimeError) as error:
+                    print(f"Weekly poll failed ({error}); daily questions continue.", flush=True)
             if replay or posting_allowed(now, hour, minute, start_date):
                 try:
                     count = post_daily_batch(db, token, channel, questions, now, replay=replay)
