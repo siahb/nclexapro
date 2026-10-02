@@ -55,12 +55,16 @@ async def wait_for_announcement():
         remaining = (launch - datetime.now(launch.tzinfo)).total_seconds()
 
 
+def first_question_notice():
+    value = os.getenv("POST_START_DATE", "2026-10-02")
+    if not value:
+        return ""
+    start = datetime.fromisoformat(value)
+    return f"**First questions: {start:%B} {start.day}, {start.year} at 12:00 PM Pacific.**\n\n"
+
+
 def daily_posting_notice():
-    hour, minute = map(int, os.getenv("POST_TIME", "12:00").split(":"))
-    display = datetime(2000, 1, 1, hour, minute).strftime("%I:%M %p").lstrip("0")
-    zone = os.getenv("BOT_TIMEZONE", "America/Los_Angeles")
-    label = "Pacific" if zone == "America/Los_Angeles" else zone
-    return f"Daily questions post at **{display} {label}**. Personal Discord notification settings still apply."
+    return "Daily questions post at **12:00 PM Pacific**. Personal Discord notification settings still apply."
 
 
 def announcement_content():
@@ -68,7 +72,7 @@ def announcement_content():
     return (
         "💊 **Meet NCLEXapro — your daily dose of NCLEX practice!**\n\n"
         "**Created by Siah.**\n\n"
-        + launch_info()
+        + first_question_notice()
         +         f"Find the daily dated threads in <#{int(os.environ['DISCORD_CHANNEL_ID'])}>.\n\n"
         "**Reminders:** React 💊 here to subscribe; remove it to unsubscribe. "
         "Subscribers get one daily role ping. "
