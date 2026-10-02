@@ -4,7 +4,24 @@ Daily NCLEX practice for the Los Medanos College RN program.
 
 ![NCLEXapro icon](assets/icon.png)
 
-**Status:** Starter bot; not deployed. Hosting, a private bot token, and at least ten imported questions are still required.
+**Status:** Ready for initial hosting setup with ten original questions included. A private bot token and Discord permissions are required. Deployment has not been verified.
+
+### Railway
+
+The Dockerfile installs dependencies and starts `python reaction_roles.py`.
+Attach one persistent volume at `/data`, set `BOT_DATA_DIR=/data` and
+`QUESTIONS_FILE=/data/questions.json`, and add the Discord variables from `.env.example`
+in Railway's Variables panel. Enter your token privately there.
+
+On first startup, a missing question bank is initialized with the ten original mixed
+questions in `starter-questions.json`. Existing banks are never overwritten.
+Those original questions are public; imported publisher questions remain excluded from
+the repository and container image. After these ten questions have been used, add more
+questions to the bank and restart. Used-question history stays on the volume.
+
+The subscription announcement is posted automatically on first successful startup.
+If startup occurs after the configured daily time, questions for today are posted immediately.
+Deploy one replica only. Railway may charge for compute and persistent storage.
 
 - [Bot overview](https://siahverse.cc/nclexapro/)
 - [Terms of Service](https://siahverse.cc/nclexapro/terms/)

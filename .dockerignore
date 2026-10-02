@@ -1,0 +1,8 @@
+.git
+.env
+questions.json
+question-bank/
+*.sqlite3
+*.sqlite3-*
+__pycache__/
+assets/

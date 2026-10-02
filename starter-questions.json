@@ -1,0 +1,154 @@
+[
+  {
+    "id": "original-mixed-001-01",
+    "topic": "Fundamentals",
+    "question": "A nurse prepares to enter the room of a client with confirmed Clostridioides difficile infection. Which action is appropriate?",
+    "choices": [
+      "A. Use an alcohol-based hand rub as the only hand hygiene method after care.",
+      "B. Wear gloves and a gown on entry and wash hands with soap and water after care.",
+      "C. Wear an N95 respirator for all routine care.",
+      "D. Place the client in a positive-pressure room."
+    ],
+    "answer": "B",
+    "rationale": "A: Alcohol-based hand rub does not reliably remove or kill C. difficile spores; soap and water is appropriate after care.\n\nB: Contact precautions include gloves and a gown. Soap and water helps physically remove spores after caring for this client.\n\nC: C. difficile requires contact precautions, not routine airborne precautions with an N95.\n\nD: Positive pressure protects selected immunocompromised clients; it is not indicated for C. difficile.",
+    "rationale_source": "Original assistant-written educational content; not an official NCLEX item.",
+    "status": "ready"
+  },
+  {
+    "id": "original-mixed-001-02",
+    "topic": "Pharmacology",
+    "question": "A client taking warfarin asks which nonprescription medication to avoid unless approved by the prescriber. Which medication should the nurse identify?",
+    "choices": [
+      "A. Ibuprofen for muscle pain.",
+      "B. An oral rehydration solution for mild dehydration.",
+      "C. Saline nasal spray for nasal dryness.",
+      "D. Artificial tears for dry eyes."
+    ],
+    "answer": "A",
+    "rationale": "A: Ibuprofen is an NSAID that can injure the gastrointestinal lining and impair platelet function, increasing bleeding risk with warfarin.\n\nB: Oral rehydration solution does not have the same direct bleeding interaction; its suitability still depends on fluid and electrolyte restrictions.\n\nC: Saline nasal spray does not have the systemic bleeding interaction seen with NSAIDs.\n\nD: Artificial tears do not increase bleeding risk through the NSAID mechanism.",
+    "rationale_source": "Original assistant-written educational content; not an official NCLEX item.",
+    "status": "ready"
+  },
+  {
+    "id": "original-mixed-001-03",
+    "topic": "Medical-surgical nursing",
+    "question": "A client with heart failure suddenly develops severe dyspnea, pink frothy sputum, and an oxygen saturation of 82%. Which immediate bedside action is most appropriate while emergency assistance is activated?",
+    "choices": [
+      "A. Encourage the client to drink water.",
+      "B. Place the client flat with the legs elevated.",
+      "C. Sit the client upright and administer oxygen according to emergency protocol.",
+      "D. Delay treatment until the next scheduled weight measurement."
+    ],
+    "answer": "C",
+    "rationale": "A: Extra fluid can worsen congestion and does not address acute hypoxemia.\n\nB: Lying flat can worsen breathing and increase venous return; upright positioning is preferable.\n\nC: These findings suggest acute pulmonary edema. Upright positioning and oxygen support breathing while urgent help and definitive treatment are obtained.\n\nD: Daily weights help track fluid balance but must not delay treatment of respiratory distress.",
+    "rationale_source": "Original assistant-written educational content; not an official NCLEX item.",
+    "status": "ready"
+  },
+  {
+    "id": "original-mixed-001-04",
+    "topic": "Diabetes care",
+    "question": "An alert client with diabetes has shakiness and diaphoresis. Blood glucose is 58 mg/dL, and the client can swallow safely. Which action should the nurse take first?",
+    "choices": [
+      "A. Give the scheduled rapid-acting insulin.",
+      "B. Offer 15 g of fast-acting carbohydrate and recheck glucose in 15 minutes.",
+      "C. Offer only a high-fat snack such as cheese.",
+      "D. Wait 1 hour and repeat the glucose measurement."
+    ],
+    "answer": "B",
+    "rationale": "A: Insulin would lower glucose further and worsen hypoglycemia.\n\nB: For a conscious adult who can swallow, approximately 15 g of fast-acting carbohydrate is appropriate; recheck after 15 minutes and repeat treatment if glucose remains low according to protocol.\n\nC: Fat slows absorption, and cheese alone does not supply enough rapidly available carbohydrate.\n\nD: Delaying treatment risks worsening hypoglycemia and impaired consciousness.",
+    "rationale_source": "Original assistant-written educational content; not an official NCLEX item.",
+    "status": "ready"
+  },
+  {
+    "id": "original-mixed-001-05",
+    "topic": "Maternity",
+    "question": "A postpartum client has heavy vaginal bleeding and a boggy uterus on assessment. Which action should the nurse initiate while summoning assistance?",
+    "choices": [
+      "A. Massage the uterine fundus.",
+      "B. Encourage ambulation in the hallway.",
+      "C. Apply an ice pack to the perineum as the only intervention.",
+      "D. Document the findings and reassess in 30 minutes."
+    ],
+    "answer": "A",
+    "rationale": "A: A boggy uterus suggests uterine atony. Fundal massage promotes contraction; activate the hemorrhage response and prepare additional interventions promptly.\n\nB: Ambulation is unsafe during active heavy bleeding and does not treat atony.\n\nC: Perineal ice may relieve swelling but does not restore uterine tone or treat this hemorrhage.\n\nD: Heavy postpartum bleeding requires immediate intervention, not delayed reassessment.",
+    "rationale_source": "Original assistant-written educational content; not an official NCLEX item.",
+    "status": "ready"
+  },
+  {
+    "id": "original-mixed-001-06",
+    "topic": "Pediatrics",
+    "question": "A 4-year-old has high fever, drooling, difficulty swallowing, and sits leaning forward to breathe. Epiglottitis is suspected. Which action is safest?",
+    "choices": [
+      "A. Use a tongue depressor to inspect the throat.",
+      "B. Force the child to lie flat for a complete examination.",
+      "C. Offer oral fluids to assess swallowing.",
+      "D. Keep the child calm in the position of comfort and summon emergency airway assistance."
+    ],
+    "answer": "D",
+    "rationale": "A: Throat manipulation can precipitate complete airway obstruction in suspected epiglottitis.\n\nB: Forcing a position may worsen obstruction and distress.\n\nC: Oral intake is unsafe with swallowing difficulty and an unstable airway.\n\nD: Minimize agitation and preserve the position of comfort while obtaining urgent expert airway support. Avoid unnecessary examination or procedures.",
+    "rationale_source": "Original assistant-written educational content; not an official NCLEX item.",
+    "status": "ready"
+  },
+  {
+    "id": "original-mixed-001-07",
+    "topic": "Mental health",
+    "question": "A client tells the nurse, \"I have been thinking about ending my life.\" Which response is most appropriate?",
+    "choices": [
+      "A. \"You have so much to be grateful for.\"",
+      "B. \"You would not really do that, would you?\"",
+      "C. \"Are you thinking about suicide right now, and do you have a plan?\"",
+      "D. \"Let us talk about something more positive.\""
+    ],
+    "answer": "C",
+    "rationale": "A: This response minimizes distress and may discourage disclosure.\n\nB: A leading question signals that the nurse expects denial and can interfere with assessment.\n\nC: Direct, nonjudgmental questions assess immediate suicide risk and guide safety interventions. Asking about suicide does not create suicidal thoughts.\n\nD: Changing the subject avoids a potentially urgent safety issue.",
+    "rationale_source": "Original assistant-written educational content; not an official NCLEX item.",
+    "status": "ready"
+  },
+  {
+    "id": "original-mixed-001-08",
+    "topic": "Delegation",
+    "question": "Which task is appropriate for the RN to delegate to trained assistive personnel for a stable adult client, consistent with facility policy?",
+    "choices": [
+      "A. Perform the initial assessment of new chest pain.",
+      "B. Teach a newly diagnosed client how to administer insulin.",
+      "C. Evaluate whether an analgesic relieved postoperative pain.",
+      "D. Measure and record routine intake and output."
+    ],
+    "answer": "D",
+    "rationale": "A: Assessment of new chest pain requires nursing judgment and urgent RN evaluation.\n\nB: Initial teaching requires the licensed nurse; assistive personnel cannot independently provide this teaching.\n\nC: Evaluating treatment effectiveness requires nursing judgment.\n\nD: Routine measurement and recording can be delegated for a stable client. The RN provides instructions, reviews findings, and remains responsible for oversight.",
+    "rationale_source": "Original assistant-written educational content; not an official NCLEX item.",
+    "status": "ready"
+  },
+  {
+    "id": "original-mixed-001-09",
+    "topic": "Neurologic safety — select all that apply",
+    "question": "A hospitalized client begins a generalized tonic-clonic seizure. Which actions should the nurse take? Select all that apply.",
+    "choices": [
+      "A. Clear nearby hazards and protect the head.",
+      "B. Restrain the arms and legs to stop the movements.",
+      "C. Turn the client onto the side when feasible without forcing movement.",
+      "D. Place a tongue depressor between the teeth.",
+      "E. Time the seizure and observe its characteristics."
+    ],
+    "answer": "A, C, E",
+    "rationale": "A: Removing hazards and cushioning the head reduces injury risk.\n\nB: Restraint does not stop a seizure and may cause injury.\n\nC: Side positioning when safely feasible supports drainage of secretions and reduces aspiration risk; do not force movement.\n\nD: Never place objects or fingers in the mouth during a seizure because of dental injury, obstruction, and bite risk.\n\nE: Duration and observed features guide evaluation; activate emergency support for prolonged or recurrent seizures according to protocol.",
+    "rationale_source": "Original assistant-written educational content; not an official NCLEX item.",
+    "status": "ready"
+  },
+  {
+    "id": "original-mixed-001-10",
+    "topic": "Postoperative care — select all that apply",
+    "question": "An adult recovering from abdominal surgery is awake and hemodynamically stable. Which measures help prevent postoperative pulmonary complications? Select all that apply.",
+    "choices": [
+      "A. Assist with early ambulation as prescribed.",
+      "B. Keep the client on strict bed rest until discharge.",
+      "C. Encourage deep breathing and coughing with incision splinting.",
+      "D. Withhold prescribed pain medication so the client remains fully alert.",
+      "E. Help the client sit upright and change position regularly."
+    ],
+    "answer": "A, C, E",
+    "rationale": "A: Early mobilization promotes lung expansion and secretion clearance.\n\nB: Unnecessary prolonged bed rest promotes atelectasis and secretion retention.\n\nC: Deep breathing expands the lungs; coughing clears secretions. Splinting supports the incision and reduces discomfort.\n\nD: Uncontrolled pain inhibits deep breathing and movement. Provide appropriate analgesia and monitor for sedation and respiratory depression.\n\nE: Upright positioning and regular repositioning support ventilation and lung expansion.",
+    "rationale_source": "Original assistant-written educational content; not an official NCLEX item.",
+    "status": "ready"
+  }
+]

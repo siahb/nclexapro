@@ -3,6 +3,7 @@ import asyncio
 import logging
 import os
 import sqlite3
+from pathlib import Path
 
 import discord
 
@@ -10,6 +11,22 @@ from bot import ROOT, database_path, load_questions, main as daily_scheduler
 
 log = logging.getLogger("nclexapro")
 EMOJI = "💊"
+
+
+def prepare_questions():
+    """Seed a missing bank with original questions without replacing an existing bank."""
+    path = Path(os.getenv("QUESTIONS_FILE", str(ROOT / "questions.json")))
+    if not path.exists():
+        source = ROOT / "starter-questions.json"
+        load_questions(source)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with path.open("x") as destination:
+                destination.write(source.read_text())
+            log.info("Initialized the question bank with 10 original practice questions.")
+        except FileExistsError:
+            pass
+    return load_questions(path)
 
 
 class NCLEXapro(discord.Client):
@@ -109,5 +126,5 @@ class NCLEXapro(discord.Client):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    load_questions(os.getenv("QUESTIONS_FILE", str(ROOT / "questions.json")))
+    prepare_questions()
     NCLEXapro().run(os.environ["DISCORD_BOT_TOKEN"])
