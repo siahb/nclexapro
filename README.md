@@ -4,6 +4,20 @@ Daily NCLEX practice for the Los Medanos College RN program.
 
 ## Daily threads
 
+### Two test replays
+
+For the configured test channel `1555389202533716009`, set `TEST_REPLAY=1` and redeploy
+to immediately replay the first ten questions in a dated `Test 1` thread. Set it to `2`
+and redeploy for `Test 2`. Each replay is recorded on the persistent volume and will not
+repeat after a restart, even on a later date. Partial deliveries resume in the same thread.
+Test replays do not mention the alerts role. Deleting test messages does not reset a replay.
+
+At launch, set `TEST_REPLAY=0` and change `DISCORD_CHANNEL_ID` to the real question channel.
+Its separate posting history allows the starter questions there once, then prevents repeats.
+Reaction subscriptions continue in the configured announcement channel. Keep `TEST_CHANNEL_ID`
+pointing to the test channel; replay attempts in another channel are rejected.
+Never delete the persistent volume to reset a test.
+
 The question channel receives one daily parent post, with the opt-in alerts role mentioned
 once. Questions are posted inside its thread, named `NCLEXapro • October 1, 2026` using
 the configured `BOT_TIMEZONE` (Pacific by default). Each question supports manual ✅ reactions.

@@ -19,6 +19,21 @@ def database_path():
     return directory / "progress.sqlite3"
 
 
+def scheduler_database_path(channel, replay):
+    base = database_path()
+    test_channel = os.getenv("TEST_CHANNEL_ID", "1555389202533716009")
+    if replay not in (0, 1, 2):
+        raise ValueError("TEST_REPLAY must be 0, 1, or 2.")
+    if replay:
+        if channel != test_channel:
+            raise ValueError("TEST_REPLAY is only allowed in TEST_CHANNEL_ID; set it to 0 for launch.")
+        return base.with_name(f"test-replay-{channel}-{replay}.sqlite3")
+    # Retain the existing test history; production channels each have their own history.
+    if channel == test_channel:
+        return base
+    return base.with_name(f"progress-{channel}.sqlite3")
+
+
 def load_questions(path):
     questions = json.loads(Path(path).read_text())
     if not isinstance(questions, list) or len(questions) < 10:
@@ -113,19 +128,27 @@ def initialize_history(db):
     db.commit()
 
 
-def daily_thread(db, token, channel, now):
+def daily_thread(db, token, channel, now, replay=0):
     day = now.date().isoformat()
+    if replay:
+        # Reuse this replay's original thread even after a date change or restart.
+        previous = db.execute("SELECT day FROM daily_threads WHERE channel_id = ? LIMIT 1",
+                              (channel,)).fetchone()
+        if previous:
+            day = previous[0]
     row = db.execute("SELECT parent_id, thread_id FROM daily_threads "
                      "WHERE day = ? AND channel_id = ?", (day, channel)).fetchone()
     label = f"{now:%B} {now.day}, {now.year}"
+    if replay:
+        label += f" • Test {replay}"
     if row is None:
-        role_id = os.getenv("ALERTS_ROLE_ID")
+        role_id = os.getenv("ALERTS_ROLE_ID") if not replay else None
         mention = f"<@&{role_id}> " if role_id else ""
         parent_id = send(token, channel,
             f"{mention}💊 **NCLEXapro • {label}**\n"
             "Today's practice questions are in the thread attached to this post. "
             "React ✅ to each question when you're done; reveal the hidden answers to review.",
-            nonce_for(f"{channel}:{day}:thread-parent"), role_id=role_id)
+            nonce_for(f"{channel}:{day}:thread-parent:replay-{replay}"), role_id=role_id)
         db.execute("INSERT INTO daily_threads VALUES (?, ?, ?, NULL)",
                    (day, channel, parent_id))
         db.commit()
@@ -146,29 +169,31 @@ def daily_thread(db, token, channel, now):
     return thread_id
 
 
-def post_daily_batch(db, token, channel, questions, now):
+def post_daily_batch(db, token, channel, questions, now, replay=0):
     day = now.date().isoformat()
     posted = {row[0] for row in db.execute(
         "SELECT question_id FROM posts WHERE day = ?", (day,))}
     used = {row[0] for row in db.execute("SELECT question_id FROM posts")}
-    candidates = [q for q in questions if q["id"] not in used][:max(0, 10 - len(posted))]
+    remaining = max(0, 10 - (len(used) if replay else len(posted)))
+    bank = questions[:10] if replay else questions
+    candidates = [q for q in bank if q["id"] not in used][:remaining]
     if not candidates:
         return 0
-    thread_id = daily_thread(db, token, channel, now)
+    thread_id = daily_thread(db, token, channel, now, replay=replay)
     count = 0
     for q in candidates:
         delivery = db.execute("SELECT day, thread_id, message_id FROM question_deliveries "
                               "WHERE question_id = ?", (q["id"],)).fetchone()
         if delivery is None:
-            message_id = send(token, thread_id, "", nonce_for(f"{channel}:{day}:{q['id']}:embed"),
-                              embeds=[question_embed(q, len(posted) + count + 1)])
+            message_id = send(token, thread_id, "", nonce_for(f"{channel}:{day}:{q['id']}:embed:replay-{replay}"),
+                              embeds=[question_embed(q, (len(used) if replay else len(posted)) + count + 1)])
             db.execute("INSERT INTO question_deliveries VALUES (?, ?, ?, ?)",
                        (q["id"], day, thread_id, message_id))
             db.commit()
             delivery = (day, thread_id, message_id)
         delivery_day, delivery_thread, message_id = delivery
         send(token, delivery_thread, explanation(q),
-             nonce_for(f"{channel}:{delivery_day}:{q['id']}:explanation"), reply_to=message_id)
+             nonce_for(f"{channel}:{delivery_day}:{q['id']}:explanation:replay-{replay}"), reply_to=message_id)
         db.execute("INSERT INTO posts VALUES (?, ?, ?)", (delivery_day, q["id"], message_id))
         db.commit()
         count += 1
@@ -179,21 +204,26 @@ def post_daily_batch(db, token, channel, questions, now):
 def main():
     token = os.environ["DISCORD_BOT_TOKEN"]
     channel = os.environ["DISCORD_CHANNEL_ID"]
+    replay = int(os.getenv("TEST_REPLAY", "0"))
+    history = scheduler_database_path(channel, replay)
     zone = ZoneInfo(os.getenv("BOT_TIMEZONE", "UTC"))
     hour, minute = map(int, os.getenv("POST_TIME", "09:00").split(":"))
     if not (0 <= hour <= 23 and 0 <= minute <= 59):
         raise ValueError("POST_TIME must be HH:MM in 24-hour time.")
     questions = load_questions(os.getenv("QUESTIONS_FILE", str(ROOT / "questions.json")))
-    with sqlite3.connect(database_path()) as db:
+    with sqlite3.connect(history) as db:
         initialize_history(db)
         while True:
             now = datetime.now(zone)
             day = now.date().isoformat()
-            if (now.hour, now.minute) >= (hour, minute):
+            if replay or (now.hour, now.minute) >= (hour, minute):
                 try:
-                    count = post_daily_batch(db, token, channel, questions, now)
+                    count = post_daily_batch(db, token, channel, questions, now, replay=replay)
                     if count:
                         print(f"Posted {count} questions to today's thread.", flush=True)
+                    if replay:
+                        print(f"Test replay {replay} complete; change TEST_REPLAY for the next test.", flush=True)
+                        return
                 except (urllib.error.URLError, TimeoutError, RuntimeError) as error:
                     print(f"Post failed ({type(error).__name__}: {error}); retrying in 60 seconds.", flush=True)
             time.sleep(60)
