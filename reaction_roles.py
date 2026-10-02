@@ -81,15 +81,21 @@ class NCLEXapro(discord.Client):
                 row = db.execute("SELECT message_id FROM subscriptions_config WHERE channel_id = ?",
                                  (str(self.channel_id),)).fetchone()
                 if row:
-                    # Do not silently recreate a deleted announcement and lose subscriptions.
-                    message = await channel.fetch_message(int(row[0]))
-                    if message.content != announcement_content():
-                        await message.edit(content=announcement_content(),
-                                           allowed_mentions=discord.AllowedMentions.none())
-                else:
+                    try:
+                        message = await channel.fetch_message(int(row[0]))
+                    except discord.NotFound as error:
+                        if error.code != 10008:
+                            raise
+                        log.warning("Saved subscription announcement was deleted; recreating it without a ping.")
+                        row = None
+                    else:
+                        if message.content != announcement_content():
+                            await message.edit(content=announcement_content(),
+                                               allowed_mentions=discord.AllowedMentions.none())
+                if not row:
                     message = await channel.send(
                         announcement_content(), allowed_mentions=discord.AllowedMentions.none())
-                    db.execute("INSERT INTO subscriptions_config VALUES (?, ?)",
+                    db.execute("INSERT OR REPLACE INTO subscriptions_config VALUES (?, ?)",
                                (str(self.channel_id), str(message.id)))
                     db.commit()
                 self.message_id = message.id
