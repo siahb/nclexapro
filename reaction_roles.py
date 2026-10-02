@@ -4,6 +4,8 @@ import logging
 import os
 import sqlite3
 from pathlib import Path
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import discord
 
@@ -29,6 +31,38 @@ def prepare_questions():
     return load_questions(path)
 
 
+def announcement_launch_time():
+    if int(os.getenv("TEST_REPLAY", "0")):
+        return None
+    value = os.getenv("ANNOUNCEMENT_START_AT", "2026-10-02T09:00")
+    if not value:
+        return None
+    launch = datetime.fromisoformat(value)
+    if launch.tzinfo is None:
+        launch = launch.replace(tzinfo=ZoneInfo(os.getenv("BOT_TIMEZONE", "America/Los_Angeles")))
+    return launch
+
+
+async def wait_for_announcement():
+    launch = announcement_launch_time()
+    if launch is None:
+        return
+    remaining = (launch - datetime.now(launch.tzinfo)).total_seconds()
+    if remaining > 0:
+        log.info("Announcement scheduled for %s; waiting without posting.", launch.isoformat())
+    while remaining > 0:
+        await asyncio.sleep(min(remaining, 60))
+        remaining = (launch - datetime.now(launch.tzinfo)).total_seconds()
+
+
+def daily_posting_notice():
+    hour, minute = map(int, os.getenv("POST_TIME", "12:00").split(":"))
+    display = datetime(2000, 1, 1, hour, minute).strftime("%I:%M %p").lstrip("0")
+    zone = os.getenv("BOT_TIMEZONE", "America/Los_Angeles")
+    label = "Pacific" if zone == "America/Los_Angeles" else zone
+    return f"Daily questions post at **{display} {label}**. Personal Discord notification settings still apply."
+
+
 def announcement_content():
     minutes = archive_duration(int(os.getenv("TEST_REPLAY", "0")))
     return (
@@ -43,9 +77,7 @@ def announcement_content():
         "UWorld QBank questions shared with permission may also be included.\n\n"
         "🔒 **Please do not copy, screenshot, forward, or share these questions "
         "anywhere outside this private Discord server.**\n\n"
-        "The default posting time is 9 AM Pacific; your server administrator "
-        "can confirm the configured schedule. "
-        "Personal Discord notification settings still apply."
+        + daily_posting_notice()
     )
 
 
@@ -66,6 +98,7 @@ class NCLEXapro(discord.Client):
     async def start_services(self):
         await self.wait_until_ready()
         try:
+            await wait_for_announcement()
             channel = await self.fetch_channel(self.channel_id)
             if not isinstance(channel, discord.TextChannel):
                 raise ValueError("Announcement channel must be a server text channel.")
