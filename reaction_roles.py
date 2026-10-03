@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 
 import discord
 
-from bot import ROOT, database_path, load_questions, study_instructions, archive_duration, launch_info, nonce_for, discord_request, main as daily_scheduler
+from bot import ROOT, database_path, load_questions, study_instructions, archive_duration, launch_info, nonce_for, discord_request, quiz_database, initialize_quiz_db, record_quiz_answer, answer_letters, quiz_prompt, inline_answer_components, private_feedback, main as daily_scheduler
 
 log = logging.getLogger("nclexapro")
 EMOJI = "💊"
@@ -80,7 +80,10 @@ def announcement_content():
         "**Reminders:** React 💊 here to subscribe; remove it to unsubscribe. "
         "Subscribers get one daily role ping. "
         "Check your Discord notification settings if alerts are muted.\n\n"
-        "**Questions:** NCLEX practice questions with answers and rationales.\n\n"
+        "**Questions:** NCLEX practice questions with private answers, rationales, and a score after all 10. "
+        "Use the answer buttons or dropdown under each question. "
+        "**Think carefully before pressing: your first answer is final. There is no undo.** "
+        "Your Discord ID and first answers are stored on the bot's private volume so progress survives restarts.\n\n"
         "🔒 **Please do not copy, screenshot, forward, or share these questions "
         "anywhere outside this private Discord server.**\n\n"
         + daily_posting_notice()
@@ -88,25 +91,6 @@ def announcement_content():
 
 
 QUIZ_TEST_CHANNEL = 1555717804936667196
-
-
-def quiz_database():
-    return database_path().with_name("quiz-tests.sqlite3")
-
-
-def initialize_quiz_db(db):
-    db.execute("CREATE TABLE IF NOT EXISTS quiz_runs (channel_id TEXT, run INTEGER, "
-               "parent_id TEXT, thread_id TEXT, PRIMARY KEY(channel_id, run))")
-    db.execute("CREATE TABLE IF NOT EXISTS quiz_messages (channel_id TEXT, run INTEGER, "
-               "question_key TEXT, question_json TEXT, message_id TEXT, "
-               "PRIMARY KEY(channel_id, run, question_key))")
-    db.execute("CREATE TABLE IF NOT EXISTS quiz_answers (channel_id TEXT, run INTEGER, "
-               "user_id TEXT, question_key TEXT, selected_json TEXT, correct INTEGER, "
-               "PRIMARY KEY(channel_id, run, user_id, question_key))")
-    columns = {row[1] for row in db.execute("PRAGMA table_info(quiz_messages)")}
-    if "question_number" not in columns:
-        db.execute("ALTER TABLE quiz_messages ADD COLUMN question_number INTEGER")
-    db.commit()
 
 
 def quiz_test_notice(run):
@@ -119,89 +103,6 @@ def quiz_test_notice(run):
             "on its private volume to keep progress through restarts. "
             "Private feedback appears at the bottom of the thread. "
             "No subscriber ping. Threads archive after 24 hours of inactivity.")
-
-
-def record_quiz_answer(channel_id, run, user_id, key, question, selected):
-    """Atomically preserve the first answer, including concurrent clicks and restarts."""
-    with sqlite3.connect(quiz_database()) as db:
-        initialize_quiz_db(db)
-        db.execute("BEGIN IMMEDIATE")
-        inserted = db.execute(
-            "INSERT OR IGNORE INTO quiz_answers VALUES (?, ?, ?, ?, ?, ?)",
-            (str(channel_id), int(run), str(user_id), key, json.dumps(sorted(selected)),
-             int(set(selected) == answer_letters(question)))).rowcount
-        stored = db.execute(
-            "SELECT selected_json FROM quiz_answers WHERE channel_id = ? AND run = ? "
-            "AND user_id = ? AND question_key = ?",
-            (str(channel_id), int(run), str(user_id), key)).fetchone()
-        rows = db.execute(
-            "SELECT a.correct, m.question_number FROM quiz_answers a JOIN quiz_messages m "
-            "ON a.channel_id = m.channel_id AND a.run = m.run AND a.question_key = m.question_key "
-            "WHERE a.channel_id = ? AND a.run = ? AND a.user_id = ? ORDER BY m.question_number",
-            (str(channel_id), int(run), str(user_id))).fetchall()
-        db.commit()
-    feedback = private_feedback(question, json.loads(stored[0]))
-    if not inserted:
-        feedback = "**Your first answer is locked. This is your saved result—there is no undo.**\n\n" + feedback
-    answered = len(rows)
-    if answered >= 10:
-        score = sum(row[0] for row in rows)
-        missed = [f"#{row[1]}" for row in rows if not row[0]]
-        feedback += (f"\n\n🎉 **Practice complete! Score: {score}/10 · {score * 10}%**\n"
-                     + ("**Review missed questions:** " + ", ".join(missed) if missed
-                        else "You answered every question correctly!")
-                     + "\nYour score is private. First answers are final for this set.")
-    else:
-        feedback += f"\n\n**Progress: {answered}/10 answered.** Complete all 10 to see your score."
-    return feedback
-
-
-def answer_letters(question):
-    # Imported answers may be 'B. ...'; generated answers use 'B' or 'A, C, E'.
-    answer = question["answer"].strip()
-    if re.match(r"^[A-Z]\.", answer):
-        letters = {answer[0]}
-    else:
-        letters = set(re.split(r"[\s,]+", answer))
-    valid = {choice.split(".", 1)[0] for choice in question["choices"]}
-    if not letters or not letters <= valid:
-        raise ValueError(f"Invalid correct answer for {question['id']}")
-    return letters
-
-
-def quiz_prompt(question, number=None):
-    heading = f"Question {number:02d} / 10" if number is not None else "Your private practice"
-    return (f"💊 **{heading} · {question.get('topic', 'NCLEX practice')}**\n\n"
-            + question["question"] + "\n\n" + "\n".join(question["choices"]) +
-            "\n\n**Think carefully before pressing: your first answer is final. There is no undo.** "
-            "Your choice and feedback are private. "
-            "For multiple answers, select every choice before confirming the dropdown.")
-
-
-def inline_answer_components(question, channel_id, run, key):
-    base = f"quiz:v2:{channel_id}:{run}:{key}"
-    letters = [choice.split(".", 1)[0] for choice in question["choices"]]
-    if len(answer_letters(question)) > 1:
-        return [{"type": 1, "components": [{
-            "type": 3, "custom_id": base + ":select",
-            "placeholder": "Select all that apply — confirmation is final",
-            "min_values": 1, "max_values": len(letters),
-            "options": [{"label": choice[:100], "value": letter}
-                        for choice, letter in zip(question["choices"], letters)],
-        }]}]
-    buttons = [{"type": 2, "style": 1, "label": letter, "custom_id": base + ":" + letter}
-               for letter in letters]
-    return [{"type": 1, "components": buttons[i:i + 5]}
-            for i in range(0, len(buttons), 5)]
-
-
-def private_feedback(question, selected):
-    correct = answer_letters(question)
-    result = "✅ Correct!" if set(selected) == correct else "📖 Let's review."
-    return (f"**{result}**\nYour answer: {', '.join(sorted(selected))}\n"
-            f"**Answer:** {', '.join(sorted(correct))}\n\n"
-            f"**Rationale:**\n{question['rationale']}\n\n"
-            "Only you can see this feedback. Your first answer is saved privately for scoring.")
 
 
 class NCLEXapro(discord.Client):
@@ -312,13 +213,19 @@ class NCLEXapro(discord.Client):
 
     async def on_interaction(self, interaction):
         custom_id = (interaction.data or {}).get("custom_id", "")
-        if not custom_id.startswith(("quiz:v1:", "quiz:v2:")):
+        if not custom_id.startswith(("quiz:v1:", "quiz:v2:", "quiz:v3:")):
             return
         await interaction.response.defer(ephemeral=True, thinking=True)
         try:
             parts = custom_id.split(":")
             _, version, channel_id, run, key = parts[:5]
-            if int(channel_id) != QUIZ_TEST_CHANNEL:
+            if version == "v3":
+                if int(channel_id) != 1401745644175229061:
+                    raise ValueError("Unknown production quiz channel.")
+                quiz_date = datetime.strptime(run, "%Y%m%d").date()
+                if quiz_date < datetime(2026, 10, 3).date():
+                    raise ValueError("Unknown production quiz date.")
+            elif int(channel_id) != QUIZ_TEST_CHANNEL:
                 raise ValueError("Unknown quiz channel.")
             with sqlite3.connect(quiz_database()) as db:
                 initialize_quiz_db(db)

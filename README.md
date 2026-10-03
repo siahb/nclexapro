@@ -218,3 +218,33 @@ question controls are updated on redeploy for the configured run. Scoring begins
 submissions after the update; previous unsaved answers cannot be recovered. Use the next
 `QUIZ_TEST_RUN` number for a fresh test set and a separate score. Earlier scores persist.
 Live production posts remain in their existing format while the pilot is tested.
+
+## Live scored quizzes — October 3, 2026 onward
+
+The production channel `1401745644175229061` now posts a complete set of ten unused
+questions at **12 PM America/Los_Angeles** using the private-answer format tested in
+#test-bot. Deploy the latest main branch before noon; the scheduler waits until noon.
+Keep `TEST_REPLAY=0`. Set `QUIZ_TEST_RUN=0` when finished with the separate pilot.
+Do not change `DISCORD_CHANNEL_ID` to the test channel or reset the volume/history.
+
+Live sets have single-choice letter buttons or a multi-choice dropdown directly below
+the prompt. Public messages contain no correct answer or rationale. Every question warns:
+**Think carefully before pressing: your first answer is final. There is no undo.**
+Selections, results, rationales, progress, and the final score are sent only as ephemeral
+Discord responses. The bot privately stores Discord IDs and first answers for scoring;
+public buttons stay visible for other students. Select-all-that-apply uses exact-match grading.
+After all ten, the student sees a score out of ten, percentage, and missed question numbers.
+Repeated clicks display the saved result. Scores survive restarts and are separate for each
+Pacific calendar date, user, channel, and test run.
+
+Existing used-question history, subscriptions, older messages, test scores, and 24-hour
+thread archiving are preserved. There is still one subscriber role ping per live daily set.
+If fewer than ten unused questions remain, no new partial scored set or alert is sent; the
+scheduler waits for the original-question feed. A partially delivered set resumes without
+repeating completed deliveries. Never run more than one replica. Check deployment logs for
+`Live private quizzes enabled: first answers locked; private score after 10.`
+
+The public feed remains original content only and is imported automatically. Generated
+questions do not require a code redeployment. Do not run `python bot.py` alone for scored
+quizzes: the `python reaction_roles.py` Gateway client is required to handle answer controls.
+The earlier spoiler/reaction format described above applies to older sets and legacy replays.

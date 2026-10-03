@@ -1,5 +1,6 @@
 """Post ten imported practice questions daily using Discord's REST API."""
 import json
+import re
 import hashlib
 import os
 import sqlite3
@@ -12,6 +13,108 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent
+
+
+def quiz_database():
+    return database_path().with_name("quiz-tests.sqlite3")
+
+
+def initialize_quiz_db(db):
+    db.execute("CREATE TABLE IF NOT EXISTS quiz_runs (channel_id TEXT, run INTEGER, "
+               "parent_id TEXT, thread_id TEXT, PRIMARY KEY(channel_id, run))")
+    db.execute("CREATE TABLE IF NOT EXISTS quiz_messages (channel_id TEXT, run INTEGER, "
+               "question_key TEXT, question_json TEXT, message_id TEXT, "
+               "PRIMARY KEY(channel_id, run, question_key))")
+    db.execute("CREATE TABLE IF NOT EXISTS quiz_answers (channel_id TEXT, run INTEGER, "
+               "user_id TEXT, question_key TEXT, selected_json TEXT, correct INTEGER, "
+               "PRIMARY KEY(channel_id, run, user_id, question_key))")
+    columns = {row[1] for row in db.execute("PRAGMA table_info(quiz_messages)")}
+    if "question_number" not in columns:
+        db.execute("ALTER TABLE quiz_messages ADD COLUMN question_number INTEGER")
+    db.commit()
+
+
+def record_quiz_answer(channel_id, run, user_id, key, question, selected):
+    """Atomically preserve the first answer, including concurrent clicks and restarts."""
+    with sqlite3.connect(quiz_database()) as db:
+        initialize_quiz_db(db)
+        db.execute("BEGIN IMMEDIATE")
+        inserted = db.execute(
+            "INSERT OR IGNORE INTO quiz_answers VALUES (?, ?, ?, ?, ?, ?)",
+            (str(channel_id), int(run), str(user_id), key, json.dumps(sorted(selected)),
+             int(set(selected) == answer_letters(question)))).rowcount
+        stored = db.execute(
+            "SELECT selected_json FROM quiz_answers WHERE channel_id = ? AND run = ? "
+            "AND user_id = ? AND question_key = ?",
+            (str(channel_id), int(run), str(user_id), key)).fetchone()
+        rows = db.execute(
+            "SELECT a.correct, m.question_number FROM quiz_answers a JOIN quiz_messages m "
+            "ON a.channel_id = m.channel_id AND a.run = m.run AND a.question_key = m.question_key "
+            "WHERE a.channel_id = ? AND a.run = ? AND a.user_id = ? ORDER BY m.question_number",
+            (str(channel_id), int(run), str(user_id))).fetchall()
+        db.commit()
+    feedback = private_feedback(question, json.loads(stored[0]))
+    if not inserted:
+        feedback = "**Your first answer is locked. This is your saved result—there is no undo.**\n\n" + feedback
+    answered = len(rows)
+    if answered >= 10:
+        score = sum(row[0] for row in rows)
+        missed = [f"#{row[1]}" for row in rows if not row[0]]
+        feedback += (f"\n\n🎉 **Practice complete! Score: {score}/10 · {score * 10}%**\n"
+                     + ("**Review missed questions:** " + ", ".join(missed) if missed
+                        else "You answered every question correctly!")
+                     + "\nYour score is private. First answers are final for this set.")
+    else:
+        feedback += f"\n\n**Progress: {answered}/10 answered.** Complete all 10 to see your score."
+    return feedback
+
+
+def answer_letters(question):
+    # Imported answers may be 'B. ...'; generated answers use 'B' or 'A, C, E'.
+    answer = question["answer"].strip()
+    if re.match(r"^[A-Z]\.", answer):
+        letters = {answer[0]}
+    else:
+        letters = set(re.split(r"[\s,]+", answer))
+    valid = {choice.split(".", 1)[0] for choice in question["choices"]}
+    if not letters or not letters <= valid:
+        raise ValueError(f"Invalid correct answer for {question['id']}")
+    return letters
+
+
+def quiz_prompt(question, number=None):
+    heading = f"Question {number:02d} / 10" if number is not None else "Your private practice"
+    return (f"💊 **{heading} · {question.get('topic', 'NCLEX practice')}**\n\n"
+            + question["question"] + "\n\n" + "\n".join(question["choices"]) +
+            "\n\n**Think carefully before pressing: your first answer is final. There is no undo.** "
+            "Your choice and feedback are private. "
+            "For multiple answers, select every choice before confirming the dropdown.")
+
+
+def inline_answer_components(question, channel_id, run, key, protocol="v2"):
+    base = f"quiz:{protocol}:{channel_id}:{run}:{key}"
+    letters = [choice.split(".", 1)[0] for choice in question["choices"]]
+    if len(answer_letters(question)) > 1:
+        return [{"type": 1, "components": [{
+            "type": 3, "custom_id": base + ":select",
+            "placeholder": "Select all that apply — confirmation is final",
+            "min_values": 1, "max_values": len(letters),
+            "options": [{"label": choice[:100], "value": letter}
+                        for choice, letter in zip(question["choices"], letters)],
+        }]}]
+    buttons = [{"type": 2, "style": 1, "label": letter, "custom_id": base + ":" + letter}
+               for letter in letters]
+    return [{"type": 1, "components": buttons[i:i + 5]}
+            for i in range(0, len(buttons), 5)]
+
+
+def private_feedback(question, selected):
+    correct = answer_letters(question)
+    result = "✅ Correct!" if set(selected) == correct else "📖 Let's review."
+    return (f"**{result}**\nYour answer: {', '.join(sorted(selected))}\n"
+            f"**Answer:** {', '.join(sorted(correct))}\n\n"
+            f"**Rationale:**\n{question['rationale']}\n\n"
+            "Only you can see this feedback. Your first answer is saved privately for scoring.")
 
 
 def posting_allowed(now, hour, minute, start_date=None):
@@ -176,13 +279,15 @@ def nonce_for(value):
     return int.from_bytes(hashlib.sha256(value.encode()).digest()[:8], "big")
 
 
-def send(token, channel, content, nonce, role_id=None, embeds=None, reply_to=None):
+def send(token, channel, content, nonce, role_id=None, embeds=None, reply_to=None, components=None):
     allowed_mentions = {"parse": [], "replied_user": False}
     if role_id:
         allowed_mentions["roles"] = [str(role_id)]
     payload = {
         "content": content, "allowed_mentions": allowed_mentions,
         "nonce": str(nonce), "enforce_nonce": True}
+    if components:
+        payload["components"] = components
     if embeds:
         payload["embeds"] = embeds
     if reply_to:
@@ -199,8 +304,26 @@ def archive_duration(replay):
     return minutes
 
 
-def study_instructions(minutes=1440):
+def study_instructions(minutes=1440, interactive=False):
     hours = minutes // 60
+    if interactive:
+        return (
+            "**How to study**\n"
+            "1. Open the dated thread attached to this post.\n"
+            "2. Read each question carefully, then tap an answer-letter button or use the dropdown.\n"
+            "**Think carefully before pressing: your first answer is final. There is no undo.**\n"
+            "3. For select-all-that-apply, select every choice before confirming the dropdown.\n"
+            "4. Your result and option-by-option rationale appear privately at the bottom of the thread.\n"
+            "5. Answer all 10 to see your private score and missed-question numbers. "
+            "Repeat clicks show the saved result; they do not change your score.\n\n"
+            "**Privacy**\n"
+            "Classmates cannot see your selections or score. The bot stores your Discord ID and first answers "
+            "on its private volume to preserve progress after restarts.\n\n"
+            "**Older sets**\n"
+            f"Threads archive after {hours} hours of inactivity; questions are kept. "
+            "Open this channel → Threads → Archived/Closed, then choose the date. "
+            "Reopen the thread if archived controls cannot be used."
+        )
     return (
         "**How to study**\n"
         "1. Click or tap the dated thread attached to the daily post.\n"
@@ -265,7 +388,7 @@ def daily_thread(db, token, channel, now, replay=0):
             f"{mention}💊 **NCLEXapro • {label}**\n"
             f"{recovery_notice}Open the attached thread for today's 10-question practice set.",
             nonce_for(f"{channel}:{day}:thread-parent:replay-{replay}"), role_id=role_id,
-            embeds=[{"title": "Your daily dose of practice", "description": study_instructions(minutes),
+            embeds=[{"title": "Your daily dose of practice", "description": study_instructions(minutes, live_quiz_enabled(channel, now, replay)),
                      "color": 0x14B8A6, "footer": {"text": "Created by Siah • Keep questions in this private server"}}])
         db.execute("INSERT INTO daily_threads VALUES (?, ?, ?, NULL)",
                    (day, channel, parent_id))
@@ -287,6 +410,66 @@ def daily_thread(db, token, channel, now, replay=0):
     return thread_id
 
 
+def live_quiz_enabled(channel, now, replay=0):
+    return (not replay and str(channel) == "1401745644175229061"
+            and now.astimezone(ZoneInfo("America/Los_Angeles")).date() >= date(2026, 10, 3))
+
+
+def post_interactive_batch(db, token, channel, candidates, now, posted):
+    """Deliver new live questions, preserving snapshots and existing posting history."""
+    day = now.date().isoformat()
+    run = int(now.astimezone(ZoneInfo("America/Los_Angeles")).strftime("%Y%m%d"))
+    # Validate the whole set before creating a thread or sending its alert.
+    for number, question in enumerate(candidates, len(posted) + 1):
+        answer_letters(question)
+        if len(quiz_prompt(question, number)) > 2000 or len(question["choices"]) > 25:
+            raise ValueError("Question exceeds interactive display limits.")
+    thread_id = daily_thread(db, token, channel, now)
+    count = 0
+    for number, q in enumerate(candidates, len(posted) + 1):
+        key = hashlib.sha256(q["id"].encode()).hexdigest()[:16]
+        with sqlite3.connect(quiz_database()) as quiz_db:
+            initialize_quiz_db(quiz_db)
+            snapshot = quiz_db.execute(
+                "SELECT question_json, message_id, question_number FROM quiz_messages "
+                "WHERE channel_id = ? AND run = ? AND question_key = ?",
+                (str(channel), run, key)).fetchone()
+            if snapshot:
+                q = json.loads(snapshot[0])
+                number = snapshot[2]
+            else:
+                quiz_db.execute(
+                    "INSERT INTO quiz_messages "
+                    "(channel_id, run, question_key, question_json, message_id, question_number) "
+                    "VALUES (?, ?, ?, ?, NULL, ?)",
+                    (str(channel), run, key, json.dumps(q), number))
+                quiz_db.commit()
+        delivery = db.execute(
+            "SELECT day, thread_id, message_id, format FROM question_deliveries "
+            "WHERE question_id = ?", (q["id"],)).fetchone()
+        if delivery is None:
+            message_id = send(token, thread_id, quiz_prompt(q, number),
+                nonce_for(f"{channel}:{day}:{q['id']}:live-quiz"),
+                components=inline_answer_components(q, channel, run, key, protocol="v3"))
+            db.execute(
+                "INSERT INTO question_deliveries (question_id, day, thread_id, message_id, format) "
+                "VALUES (?, ?, ?, ?, 'interactive')", (q["id"], day, thread_id, message_id))
+            db.commit()
+        else:
+            # Finish an interrupted delivery without posting the question again.
+            message_id = delivery[2]
+        with sqlite3.connect(quiz_database()) as quiz_db:
+            quiz_db.execute(
+                "UPDATE quiz_messages SET message_id = ? WHERE channel_id = ? AND run = ? AND question_key = ?",
+                (str(message_id), str(channel), run, key))
+            quiz_db.commit()
+        db.execute("INSERT INTO posts VALUES (?, ?, ?)", (day, q["id"], message_id))
+        db.commit()
+        count += 1
+        time.sleep(1)
+    return count
+
+
 def post_daily_batch(db, token, channel, questions, now, replay=0):
     day = now.date().isoformat()
     posted = {row[0] for row in db.execute(
@@ -297,6 +480,11 @@ def post_daily_batch(db, token, channel, questions, now, replay=0):
     candidates = [q for q in bank if q["id"] not in used][:remaining]
     if not candidates:
         return 0
+    if live_quiz_enabled(channel, now, replay):
+        if len(candidates) < remaining:
+            print("Waiting for enough unused questions to deliver a complete 10-question scored set.", flush=True)
+            return 0
+        return post_interactive_batch(db, token, channel, candidates, now, posted)
     thread_id = daily_thread(db, token, channel, now, replay=replay)
     count = 0
     for q in candidates:
@@ -373,6 +561,8 @@ def main():
     if not (0 <= hour <= 23 and 0 <= minute <= 59):
         raise ValueError("POST_TIME must be HH:MM in 24-hour time.")
     questions = load_questions(os.getenv("QUESTIONS_FILE", str(ROOT / "questions.json")))
+    if live_quiz_enabled(channel, datetime.now(zone), replay):
+        print("Live private quizzes enabled: first answers locked; private score after 10.", flush=True)
     last_refresh = None
     with sqlite3.connect(history) as db:
         initialize_history(db)
