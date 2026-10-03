@@ -183,14 +183,18 @@ Keep one replica and the persistent volume attached.
 Each public question has answer-letter buttons, or a select-all-that-apply dropdown, with no
 public answer or rationale. Tap a letter to submit a single answer. For multiple answers,
 select every applicable choice and confirm the dropdown to submit. Only the interacting student sees
-their selection, result, and option-by-option rationale. Individual answers, student IDs,
-and scores are not written to the quiz database. Discord still processes the interactions;
-this is privacy from classmates, not anonymity from Discord.
+their selection, result, and option-by-option rationale. The first submission is final for
+that run: there is no undo. After all ten answers, the bot privately shows the score, percentage,
+and missed question numbers. SATA requires an exact match; there is no partial credit.
+The private Railway database now stores Discord user IDs, first selections, and correctness
+to preserve scores across restarts. Classmates cannot query another student’s progress.
+Discord still processes the interactions; this is privacy from classmates, not anonymity from Discord.
 
 The volume stores question snapshots and test thread/message IDs so public buttons work
 after restarts. Redeploying upgrades the current run's saved question messages to inline
 controls without posting another set. Older unmodified buttons retain their private-panel
-fallback; those panels expire after ten minutes or a restart. Retrying is allowed.
+fallback; older panel buttons ask the user to use the updated controls. Repeated clicks show the saved
+first result and never change the score.
 Discord places private feedback at the bottom of the thread; selections are made beside the question. Test threads archive
 after 24 hours of inactivity; find them under **Threads → Archived/Closed**. Reopen the thread
 in Discord if archived controls cannot be used. Deleting test messages does not reset a run.
@@ -205,3 +209,12 @@ single-choice correct/incorrect results; SATA exact-match grading; two users ans
 the same question independently; no answers appearing in the public thread; restart and
 reopen; completed-run deduplication; and archived-thread access. The existing production
 question format and native weekly poll remain unchanged during this pilot.
+
+### Scored pilot update
+
+Every question warns: **Think carefully before pressing: your first answer is final. There is no undo.**
+Dropdown confirmation submits all selected choices immediately. Existing test instructions and
+question controls are updated on redeploy for the configured run. Scoring begins with new
+submissions after the update; previous unsaved answers cannot be recovered. Use the next
+`QUIZ_TEST_RUN` number for a fresh test set and a separate score. Earlier scores persist.
+Live production posts remain in their existing format while the pilot is tested.
