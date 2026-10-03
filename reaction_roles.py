@@ -100,7 +100,60 @@ def initialize_quiz_db(db):
     db.execute("CREATE TABLE IF NOT EXISTS quiz_messages (channel_id TEXT, run INTEGER, "
                "question_key TEXT, question_json TEXT, message_id TEXT, "
                "PRIMARY KEY(channel_id, run, question_key))")
+    db.execute("CREATE TABLE IF NOT EXISTS quiz_answers (channel_id TEXT, run INTEGER, "
+               "user_id TEXT, question_key TEXT, selected_json TEXT, correct INTEGER, "
+               "PRIMARY KEY(channel_id, run, user_id, question_key))")
+    columns = {row[1] for row in db.execute("PRAGMA table_info(quiz_messages)")}
+    if "question_number" not in columns:
+        db.execute("ALTER TABLE quiz_messages ADD COLUMN question_number INTEGER")
     db.commit()
+
+
+def quiz_test_notice(run):
+    return (f"🧪 **NCLEXapro private quiz • Test {run}**\n"
+            "Answer the 10 questions in the attached thread using the buttons or dropdown. "
+            "**Think carefully before pressing: your first answer is final. There is no undo.** "
+            "For multiple answers, select every choice before confirming the dropdown. "
+            "After all 10, you receive a private score and missed-question list. "
+            "Only you see your choices and feedback; the bot stores your Discord ID and answers "
+            "on its private volume to keep progress through restarts. "
+            "Private feedback appears at the bottom of the thread. "
+            "No subscriber ping. Threads archive after 24 hours of inactivity.")
+
+
+def record_quiz_answer(channel_id, run, user_id, key, question, selected):
+    """Atomically preserve the first answer, including concurrent clicks and restarts."""
+    with sqlite3.connect(quiz_database()) as db:
+        initialize_quiz_db(db)
+        db.execute("BEGIN IMMEDIATE")
+        inserted = db.execute(
+            "INSERT OR IGNORE INTO quiz_answers VALUES (?, ?, ?, ?, ?, ?)",
+            (str(channel_id), int(run), str(user_id), key, json.dumps(sorted(selected)),
+             int(set(selected) == answer_letters(question)))).rowcount
+        stored = db.execute(
+            "SELECT selected_json FROM quiz_answers WHERE channel_id = ? AND run = ? "
+            "AND user_id = ? AND question_key = ?",
+            (str(channel_id), int(run), str(user_id), key)).fetchone()
+        rows = db.execute(
+            "SELECT a.correct, m.question_number FROM quiz_answers a JOIN quiz_messages m "
+            "ON a.channel_id = m.channel_id AND a.run = m.run AND a.question_key = m.question_key "
+            "WHERE a.channel_id = ? AND a.run = ? AND a.user_id = ? ORDER BY m.question_number",
+            (str(channel_id), int(run), str(user_id))).fetchall()
+        db.commit()
+    feedback = private_feedback(question, json.loads(stored[0]))
+    if not inserted:
+        feedback = "**Your first answer is locked. This is your saved result—there is no undo.**\n\n" + feedback
+    answered = len(rows)
+    if answered >= 10:
+        score = sum(row[0] for row in rows)
+        missed = [f"#{row[1]}" for row in rows if not row[0]]
+        feedback += (f"\n\n🎉 **Practice complete! Score: {score}/10 · {score * 10}%**\n"
+                     + ("**Review missed questions:** " + ", ".join(missed) if missed
+                        else "You answered every question correctly!")
+                     + "\nYour score is private. First answers are final for this set.")
+    else:
+        feedback += f"\n\n**Progress: {answered}/10 answered.** Complete all 10 to see your score."
+    return feedback
 
 
 def answer_letters(question):
@@ -120,7 +173,8 @@ def quiz_prompt(question, number=None):
     heading = f"Question {number:02d} / 10" if number is not None else "Your private practice"
     return (f"💊 **{heading} · {question.get('topic', 'NCLEX practice')}**\n\n"
             + question["question"] + "\n\n" + "\n".join(question["choices"]) +
-            "\n\nAnswer using the buttons or dropdown below. Your choice and feedback are private. "
+            "\n\n**Think carefully before pressing: your first answer is final. There is no undo.** "
+            "Your choice and feedback are private. "
             "For multiple answers, select every choice before confirming the dropdown.")
 
 
@@ -130,7 +184,7 @@ def inline_answer_components(question, channel_id, run, key):
     if len(answer_letters(question)) > 1:
         return [{"type": 1, "components": [{
             "type": 3, "custom_id": base + ":select",
-            "placeholder": "Select all that apply — selecting submits privately",
+            "placeholder": "Select all that apply — confirmation is final",
             "min_values": 1, "max_values": len(letters),
             "options": [{"label": choice[:100], "value": letter}
                         for choice, letter in zip(question["choices"], letters)],
@@ -147,53 +201,7 @@ def private_feedback(question, selected):
     return (f"**{result}**\nYour answer: {', '.join(sorted(selected))}\n"
             f"**Answer:** {', '.join(sorted(correct))}\n\n"
             f"**Rationale:**\n{question['rationale']}\n\n"
-            "Only you can see this feedback. Individual answers are not saved.")
-
-
-class PrivateAnswerView(discord.ui.View):
-    def __init__(self, question, user_id):
-        super().__init__(timeout=600)
-        self.question = question
-        self.user_id = user_id
-        self.selected = []
-        self.submitted = False
-        multiple = len(answer_letters(question)) > 1
-        options = [discord.SelectOption(label=choice[:100], value=choice.split('.', 1)[0])
-                   for choice in question["choices"]]
-        select = discord.ui.Select(placeholder="Select all that apply" if multiple else "Choose one answer",
-                                   options=options, min_values=1,
-                                   max_values=len(options) if multiple else 1)
-        async def choose(interaction):
-            self.selected = list(select.values)
-            await interaction.response.defer()
-        select.callback = choose
-        self.add_item(select)
-        submit = discord.ui.Button(label="Submit answer", style=discord.ButtonStyle.success)
-        submit.callback = self.submit
-        self.add_item(submit)
-
-    async def interaction_check(self, interaction):
-        if interaction.user.id != self.user_id:
-            await interaction.response.send_message("Open your own private answer panel.", ephemeral=True)
-            return False
-        return True
-
-    async def submit(self, interaction):
-        if self.submitted:
-            await interaction.response.send_message("Already submitted. Open the question again to retry.", ephemeral=True)
-            return
-        if not self.selected:
-            await interaction.response.send_message("Choose an answer from the menu first.", ephemeral=True)
-            return
-        self.submitted = True
-        feedback = private_feedback(self.question, self.selected)
-        # Existing validated questions fit the feedback limit; split defensively for imports.
-        chunks = [feedback[i:i + 1900] for i in range(0, len(feedback), 1900)]
-        await interaction.response.edit_message(content=chunks[0], view=None, allowed_mentions=discord.AllowedMentions.none())
-        for chunk in chunks[1:]:
-            await interaction.followup.send(chunk, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
-        self.stop()
-
+            "Only you can see this feedback. Your first answer is saved privately for scoring.")
 
 
 class NCLEXapro(discord.Client):
@@ -239,12 +247,7 @@ class NCLEXapro(discord.Client):
                                  (str(channel_id), run)).fetchone()
                 if row is None:
                     payload = {
-                        "content": f"🧪 **NCLEXapro private quiz • Test {run}**\n"
-                                   "Open the attached thread for 10 practice questions. Use the answer buttons or dropdown "
-                                   "under each question. Dropdown selections submit when confirmed. Only you see your choices and feedback. "
-                                   "No individual scores are stored. You can reopen a question to retry. "
-                                   "You can answer directly beside the question; private feedback appears at the bottom of the thread. "
-                                   "This is a test; there is no subscriber ping. Threads archive after 24 hours of inactivity.",
+                        "content": quiz_test_notice(run),
                         "allowed_mentions": {"parse": []},
                         "nonce": str(nonce_for(f"quiz-test:{channel_id}:{run}:parent")), "enforce_nonce": True}
                     parent = await asyncio.to_thread(discord_request, os.environ["DISCORD_BOT_TOKEN"],
@@ -254,6 +257,9 @@ class NCLEXapro(discord.Client):
                     db.commit()
                     row = (str(parent["id"]), None)
                 parent_id, thread_id = row
+                await asyncio.to_thread(discord_request, os.environ["DISCORD_BOT_TOKEN"],
+                    f"channels/{channel_id}/messages/{parent_id}",
+                    {"content": quiz_test_notice(run), "allowed_mentions": {"parse": []}}, "PATCH")
                 if thread_id is None:
                     parent = await channel.fetch_message(int(parent_id))
                     thread = parent.thread
@@ -270,6 +276,11 @@ class NCLEXapro(discord.Client):
                     record = db.execute("SELECT message_id, question_json FROM quiz_messages "
                                         "WHERE channel_id = ? AND run = ? AND question_key = ?",
                                         (str(channel_id), run, key)).fetchone()
+                    if record:
+                        db.execute("UPDATE quiz_messages SET question_number = ? "
+                                   "WHERE channel_id = ? AND run = ? AND question_key = ?",
+                                   (number, str(channel_id), run, key))
+                        db.commit()
                     if record and record[0]:
                         saved = json.loads(record[1])
                         await asyncio.to_thread(discord_request, os.environ["DISCORD_BOT_TOKEN"],
@@ -280,8 +291,10 @@ class NCLEXapro(discord.Client):
                     if record:
                         q = json.loads(record[1])
                     else:
-                        db.execute("INSERT INTO quiz_messages VALUES (?, ?, ?, ?, NULL)",
-                                   (str(channel_id), run, key, json.dumps(q)))
+                        db.execute("INSERT INTO quiz_messages "
+                                   "(channel_id, run, question_key, question_json, message_id, question_number) "
+                                   "VALUES (?, ?, ?, ?, NULL, ?)",
+                                   (str(channel_id), run, key, json.dumps(q), number))
                         db.commit()
                     payload = {
                         "content": quiz_prompt(q, number), "allowed_mentions": {"parse": []},
@@ -316,9 +329,9 @@ class NCLEXapro(discord.Client):
                 raise ValueError("This test question is no longer available.")
             question = json.loads(row[0])
             if version == "v1":
-                # Keep older test buttons usable until their messages are upgraded.
-                await interaction.followup.send(quiz_prompt(question), ephemeral=True,
-                    view=PrivateAnswerView(question, interaction.user.id),
+                await interaction.followup.send(
+                    "This older button has been replaced. Use the answer controls on the updated question "
+                    "or ask Siah to redeploy this test run.", ephemeral=True,
                     allowed_mentions=discord.AllowedMentions.none())
                 return
             if len(parts) != 6:
@@ -333,7 +346,8 @@ class NCLEXapro(discord.Client):
                 raise ValueError("Invalid answer control.")
             if not selected or len(set(selected)) != len(selected) or not set(selected) <= valid:
                 raise ValueError("Invalid selected choices.")
-            feedback = private_feedback(question, selected)
+            feedback = await asyncio.to_thread(record_quiz_answer,
+                channel_id, int(run), interaction.user.id, key, question, selected)
             for offset in range(0, len(feedback), 1900):
                 await interaction.followup.send(feedback[offset:offset + 1900], ephemeral=True,
                     allowed_mentions=discord.AllowedMentions.none())
