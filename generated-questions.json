@@ -191,5 +191,197 @@
     "source_urls": [
       "https://medlineplus.gov/druginfo/meds/a601011.html"
     ]
+  },
+  {
+    "id": "original-daily-2026-10-03-01",
+    "topic": "Fundamentals: pressure-injury prevention",
+    "question": "A client with limited leg movement spends much of the day in a wheelchair. Which plan best reduces pressure-injury risk?",
+    "choices": [
+      "A. Use a pressure-reducing seat cushion and assist with regular weight shifts.",
+      "B. Use a donut-shaped cushion to concentrate support around the tailbone.",
+      "C. Check the skin only after an open sore develops.",
+      "D. Drag the client across the seat during transfers."
+    ],
+    "answer": "A",
+    "rationale": "A: An appropriate pressure-reducing cushion and regular weight shifts relieve sustained pressure. Continue skin checks and individualized positioning.\n\nB: Donut-shaped cushions are not recommended for pressure-injury prevention.\n\nC: Daily skin checks can identify early changes; waiting for an open sore delays prevention and treatment.\n\nD: Dragging can injure skin. Use an appropriate assisted-transfer technique rather than dragging.",
+    "source_urls": [
+      "https://medlineplus.gov/ency/patientinstructions/000147.htm"
+    ],
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale verified against the linked authoritative source on 2026-10-03. Not UWorld content or an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-03"
+  },
+  {
+    "id": "original-daily-2026-10-03-02",
+    "topic": "Pharmacology: medication reconciliation",
+    "question": "A client asks about starting sildenafil for erectile dysfunction. Which item on the medication list requires the nurse to flag a contraindicated combination for prescriber review?",
+    "choices": [
+      "A. Occasional acetaminophen for headache.",
+      "B. Prescribed nitroglycerin for angina.",
+      "C. Saline nasal spray for dryness.",
+      "D. A nonmedicated skin moisturizer."
+    ],
+    "answer": "B",
+    "rationale": "A: This item does not identify the nitrate interaction being tested; a full medication review is still needed.\n\nB: Sildenafil must not be combined with nitrate medicines such as nitroglycerin. Notify the prescriber before sildenafil is started.\n\nC: Saline nasal spray does not identify this contraindicated nitrate combination.\n\nD: A nonmedicated moisturizer does not identify this interaction. Do not assume any drug is safe without reviewing the complete list.",
+    "source_urls": [
+      "https://medlineplus.gov/druginfo/meds/a699015.html"
+    ],
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale verified against the linked authoritative source on 2026-10-03. Not UWorld content or an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-03"
+  },
+  {
+    "id": "original-daily-2026-10-03-03",
+    "topic": "Adult medical-surgical: reflux teaching",
+    "question": "A client with gastroesophageal reflux reports symptoms mainly after lying down at night. Which change should the nurse recommend?",
+    "choices": [
+      "A. Eat a large snack immediately before bed.",
+      "B. Lie flat immediately after dinner.",
+      "C. Finish meals at least 3 hours before lying down or going to bed.",
+      "D. Use peppermint tea as a guaranteed way to prevent reflux."
+    ],
+    "answer": "C",
+    "rationale": "A: Eating just before bed can worsen nighttime reflux; this does not provide the recommended interval before lying down.\n\nB: Lying down immediately after a meal may worsen symptoms.\n\nC: Leaving at least 3 hours between meals and lying down or bedtime may improve nighttime reflux symptoms.\n\nD: Mint can trigger reflux in some people and is not a guaranteed remedy. Identify individual food triggers with the care team.",
+    "source_urls": [
+      "https://www.niddk.nih.gov/health-information/digestive-diseases/acid-reflux-ger-gerd-adults/eating-diet-nutrition"
+    ],
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale verified against the linked authoritative source on 2026-10-03. Not UWorld content or an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-03"
+  },
+  {
+    "id": "original-daily-2026-10-03-04",
+    "topic": "Maternity: early-pregnancy triage",
+    "question": "A client with a positive pregnancy test calls about sudden severe lower abdominal pain, shoulder pain, and feeling faint. What should the nurse advise?",
+    "choices": [
+      "A. Wait until the next prenatal appointment.",
+      "B. Lie down at home and call back only if vaginal bleeding becomes heavy.",
+      "C. Treat this as an expected early-pregnancy discomfort.",
+      "D. Seek emergency evaluation now for possible ruptured ectopic pregnancy."
+    ],
+    "answer": "D",
+    "rationale": "A: This combination requires urgent assessment, not a routine appointment.\n\nB: A ruptured ectopic pregnancy can cause internal bleeding. Heavy visible vaginal bleeding is not required before seeking help.\n\nC: Severe sudden pain, shoulder pain, and faintness are warning symptoms, not routine discomfort.\n\nD: These symptoms can occur when an ectopic pregnancy ruptures and bleeds. Immediate emergency evaluation is necessary; the diagnosis requires clinical assessment.",
+    "source_urls": [
+      "https://medlineplus.gov/ency/article/000895.htm"
+    ],
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale verified against the linked authoritative source on 2026-10-03. Not UWorld content or an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-03"
+  },
+  {
+    "id": "original-daily-2026-10-03-05",
+    "topic": "Pediatrics: safe sleep — select all that apply",
+    "question": "The nurse reviews sleep arrangements for a healthy 2-month-old. Which plans follow safe-sleep recommendations? Select all that apply.",
+    "choices": [
+      "A. Place the infant on the back for naps and nighttime sleep.",
+      "B. Position the infant on the side using a wedge.",
+      "C. Use a firm, flat sleep surface in a safety-approved crib with a fitted sheet.",
+      "D. Put pillows and loose blankets in the crib for comfort.",
+      "E. Keep the infant's separate crib or bassinet in the caregiver's room."
+    ],
+    "answer": "A, C, E",
+    "rationale": "A: Back positioning is recommended for every sleep period.\n\nB: Side positioning with a wedge is not the recommended arrangement; use back positioning on a flat surface.\n\nC: A firm, flat, approved sleep surface with a fitted sheet supports safe sleep.\n\nD: Pillows, loose blankets, and other soft bedding should stay out of the sleep area.\n\nE: Room sharing with the infant in a separate crib or bassinet is recommended, ideally through at least 6 months. Sharing a room does not mean sharing an adult bed.",
+    "source_urls": [
+      "https://www.cdc.gov/sudden-infant-death/sleep-safely/index.html"
+    ],
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale verified against the linked authoritative source on 2026-10-03. Not UWorld content or an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-03"
+  },
+  {
+    "id": "original-daily-2026-10-03-06",
+    "topic": "Mental health: recognizing mania",
+    "question": "The nurse assesses a client with bipolar disorder. Which report is most consistent with manic symptoms rather than depressive symptoms?",
+    "choices": [
+      "A. Low energy, loss of interest, and feelings of worthlessness.",
+      "B. Sleeping very little without feeling tired, racing thoughts, and unusually increased activity.",
+      "C. Feeling slowed down and having difficulty completing simple activities.",
+      "D. Sleeping much more than usual with persistent hopelessness."
+    ],
+    "answer": "B",
+    "rationale": "A: Low energy, loss of interest, and worthlessness are associated with depressive symptoms.\n\nB: Decreased need for sleep, racing thoughts, and increased activity are characteristic manic symptoms. A full assessment is needed to evaluate the episode.\n\nC: Slowing and reduced ability to function fit depressive symptoms more closely than the manic pattern described.\n\nD: Excessive sleep and hopelessness fit depressive symptoms. Sleep duration alone cannot establish a diagnosis.",
+    "source_urls": [
+      "https://www.nimh.nih.gov/health/publications/bipolar-disorder"
+    ],
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale verified against the linked authoritative source on 2026-10-03. Not UWorld content or an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-03"
+  },
+  {
+    "id": "original-daily-2026-10-03-07",
+    "topic": "Delegation: validating competence",
+    "question": "Facility policy permits trained assistive personnel to obtain routine bedside glucose readings for stable clients. A newly hired assistant says they have never used this facility's glucose meter. What should the RN do before delegating the task?",
+    "choices": [
+      "A. Delegate immediately because the assistant has used a different meter.",
+      "B. Ask another assistant to assume responsibility for the RN's delegation decision.",
+      "C. Ensure training and validated competence with the required equipment, then give clear directions and reporting expectations.",
+      "D. Delegate without checking competence because the client is stable."
+    ],
+    "answer": "C",
+    "rationale": "A: Experience with other equipment does not establish competence with the required device and procedure.\n\nB: The delegating nurse retains accountability for the delegation decision; informal reassignment does not replace competency validation.\n\nC: Delegation requires appropriate knowledge and skills, validated competence, and clear directions, including when and how to report results.\n\nD: Client stability is one consideration; it does not remove the need to verify the delegatee's competence and provide oversight.",
+    "source_urls": [
+      "https://www.ncsbn.org/public-files/NGND-PosPaper_06.pdf"
+    ],
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale verified against the linked authoritative source on 2026-10-03. Not UWorld content or an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-03"
+  },
+  {
+    "id": "original-daily-2026-10-03-08",
+    "topic": "Safety: home oxygen — select all that apply",
+    "question": "A client prescribed home oxygen reviews household safety plans with the nurse. Which plans are appropriate? Select all that apply.",
+    "choices": [
+      "A. Keep the room used for oxygen therapy well ventilated.",
+      "B. Apply an oil-based product such as Vaseline while using oxygen.",
+      "C. Install smoke detectors and check that they work.",
+      "D. Allow a visitor to smoke nearby while oxygen is in use.",
+      "E. Avoid flammable cleaning liquids and aerosols while using oxygen."
+    ],
+    "answer": "A, C, E",
+    "rationale": "A: A well-ventilated room is part of recommended home-oxygen safety.\n\nB: Oil-based emollients such as Vaseline can pose a fire risk during oxygen use. Ask the care team or pharmacist about suitable alternatives.\n\nC: Working smoke detectors and fire alarms support household fire safety.\n\nD: Smoking near someone using oxygen is unsafe and must not be allowed.\n\nE: Flammable liquids and aerosols should not be used while the oxygen device is in use.",
+    "source_urls": [
+      "https://www.nhs.uk/tests-and-treatments/home-oxygen-treatment/"
+    ],
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale verified against the linked authoritative source on 2026-10-03. Not UWorld content or an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-03"
+  },
+  {
+    "id": "original-daily-2026-10-03-09",
+    "topic": "Pharmacology: antibiotic adverse reactions",
+    "question": "After taking amoxicillin, a client develops wheezing and swelling of the lips and tongue. Which instruction should the nurse give?",
+    "choices": [
+      "A. Take the next dose with food.",
+      "B. Wait until the course is finished before reporting the symptoms.",
+      "C. Stop taking amoxicillin and obtain emergency medical care immediately.",
+      "D. Take an extra dose to overcome the reaction."
+    ],
+    "answer": "C",
+    "rationale": "A: Food may help ordinary stomach upset, but it does not address wheezing and swelling of the mouth or airway.\n\nB: These serious symptoms need immediate evaluation; waiting can be dangerous.\n\nC: Wheezing and lip or tongue swelling can indicate a serious allergic reaction. Stop the medication and obtain emergency care now.\n\nD: Another dose can worsen the reaction; it is not a treatment for allergy.",
+    "source_urls": [
+      "https://medlineplus.gov/druginfo/meds/a685001.html"
+    ],
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale verified against the linked authoritative source on 2026-10-03. Not UWorld content or an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-03"
+  },
+  {
+    "id": "original-daily-2026-10-03-10",
+    "topic": "Adult medical-surgical: kidney-stone care",
+    "question": "A client is managing a small kidney stone at home under a clinician's care. The nurse explains an order to strain all urine. What is the main purpose?",
+    "choices": [
+      "A. Catch the stone so it can be saved and tested.",
+      "B. Remove bacteria from urine before it leaves the body.",
+      "C. Dissolve the stone as urine passes through the strainer.",
+      "D. Prove the stone has passed whenever the client becomes pain free."
+    ],
+    "answer": "A",
+    "rationale": "A: Straining urine can capture a passed stone so it can be tested, helping guide care and prevention.\n\nB: A urine strainer does not sterilize urine or treat infection.\n\nC: Straining collects a stone; it does not dissolve it.\n\nD: Becoming pain free does not confirm passage. A captured stone or appropriate follow-up imaging may be needed to confirm passage of a previously obstructing stone.",
+    "source_urls": [
+      "https://medlineplus.gov/ency/article/000458.htm"
+    ],
+    "rationale_source": "Original assistant-written NCLEX-style educational item; clinical rationale verified against the linked authoritative source on 2026-10-03. Not UWorld content or an official NCLEX item.",
+    "status": "ready",
+    "generated_for": "2026-10-03"
   }
 ]
